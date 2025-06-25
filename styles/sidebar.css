@@ -1,0 +1,280 @@
+/* =====================================================
+   SIDEBAR.CSS - Estilos da Barra Lateral
+   ===================================================== */
+
+/* Container da extensão ajustando o WhatsApp */
+#app {
+  transition: margin-right 0.3s ease;
+}
+
+/* Barra lateral minimalista */
+.mini-sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 70px;
+  height: 100vh;
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  backdrop-filter: blur(20px);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem 0;
+  box-shadow: -5px 0 20px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hover effect na sidebar inteira */
+.mini-sidebar:hover {
+  width: 220px;
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.4);
+}
+
+.mini-sidebar:hover .btn-label {
+  opacity: 1;
+  transform: translateX(0);
+  width: auto;
+  margin-left: 0.75rem;
+}
+
+.mini-sidebar:hover .sidebar-btn {
+  width: auto;
+  padding: 0 1rem;
+  justify-content: flex-start;
+}
+
+/* Logo animado */
+.logo-animation {
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.4);
+  animation: float 6s ease-in-out infinite;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.logo-animation::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #6366f1, #8b5cf6, #ec4899, #6366f1);
+  border-radius: 15px;
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 0.3s ease;
+  background-size: 400% 400%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.logo-animation:hover::before {
+  opacity: 1;
+}
+
+.logo-animation:hover {
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 12px 40px rgba(99, 102, 241, 0.6);
+}
+
+/* Menu da sidebar */
+.sidebar-menu {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 2rem 0.5rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Scrollbar customizada */
+.sidebar-menu::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-menu::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+/* Botões da sidebar */
+.sidebar-btn {
+  position: relative;
+  min-width: 50px;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.sidebar-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.sidebar-btn:hover::before {
+  left: 100%;
+}
+
+.sidebar-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.5);
+  transform: translateX(-5px);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3);
+  color: #fff;
+}
+
+.sidebar-btn.active {
+  background: rgba(99, 102, 241, 0.3);
+  border-color: #6366f1;
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+}
+
+.sidebar-btn.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background: #6366f1;
+  border-radius: 0 3px 3px 0;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.8);
+}
+
+/* Ícone e label do botão */
+.btn-icon {
+  font-size: 1.4rem;
+  transition: transform 0.3s ease;
+}
+
+.sidebar-btn:hover .btn-icon {
+  transform: scale(1.1);
+}
+
+.btn-label {
+  font-size: 0.85rem;
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: all 0.3s ease;
+  width: 0;
+}
+
+/* Indicadores especiais */
+.pulse-dot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 10px;
+  height: 10px;
+  background: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+/* Brilho especial da IA */
+.ai-glow {
+  position: absolute;
+  inset: -2px;
+  background: conic-gradient(from 180deg at 50% 50%, #6366f1 0deg, #8b5cf6 90deg, #ec4899 180deg, #f59e0b 270deg, #6366f1 360deg);
+  border-radius: 15px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+  animation: rotate 4s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.sidebar-btn[data-action="ai"]:hover .ai-glow {
+  opacity: 0.6;
+}
+
+/* Footer da sidebar */
+.sidebar-footer {
+  padding: 1rem 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  width: 100%;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .mini-sidebar {
+    width: 60px;
+  }
+  
+  .mini-sidebar:hover {
+    width: 200px;
+  }
+  
+  .sidebar-btn {
+    min-width: 44px;
+    height: 44px;
+  }
+  
+  .btn-icon {
+    font-size: 1.2rem;
+  }
+}
