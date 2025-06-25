@@ -27,8 +27,8 @@ metricas.ticketMedio = metricas.totalDeals > 0 ?
     
     state.metricas = metricas;
     state.dadosCarregados = true;
-    
 
+    return metricas;
   }
   
   // =====================================================
