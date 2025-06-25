@@ -70,7 +70,7 @@ stat.innerHTML = `
 `;
 coluna.appendChild(stat);
 
-return coluna;
+
   
   // =====================================================
   // OPERAÇÕES COM COLUNAS
