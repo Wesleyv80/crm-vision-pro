@@ -14,7 +14,8 @@ window.CRMKanban = (() => {
       busca: '',
       tags: [],
       origem: ''
-    }
+    },
+    todosClientes: [] // Para restaurar após busca
   };
   
   // =====================================================
@@ -38,6 +39,7 @@ window.CRMKanban = (() => {
     // Container das colunas
     const colunasContainer = document.createElement('div');
     colunasContainer.className = 'kanban-columns';
+    colunasContainer.style.cssText = 'display: flex; gap: 20px; overflow-x: auto; padding: 20px 0;';
     
     // Carrega dados e renderiza colunas
     carregarDados().then(() => {
@@ -53,12 +55,13 @@ window.CRMKanban = (() => {
   }
   
   // =====================================================
-  // HEADER DO KANBAN
+  // HEADER DO KANBAN - CORRIGIDO
   // =====================================================
   
   function criarHeaderKanban() {
     const header = document.createElement('div');
     header.className = 'kanban-header';
+    header.style.cssText = 'padding: 20px; border-bottom: 1px solid #e5e7eb;';
     
     header.innerHTML = `
       <div class="kanban-title">
@@ -66,39 +69,231 @@ window.CRMKanban = (() => {
         <span class="kanban-subtitle">Arraste os cards entre as colunas</span>
       </div>
       
-      <div class="kanban-controls">
-        <div class="kanban-search">
+      <div class="kanban-controls" style="margin-top: 15px; display: flex; gap: 10px; align-items: center;">
+        <div class="kanban-search" style="position: relative; flex: 1; max-width: 400px;">
           <input type="text" 
-            placeholder="Buscar cliente..." 
-            class="kanban-search-input">
-          <button class="kanban-search-btn">🔍</button>
+            id="kanban-search-input"
+            placeholder="Buscar cliente... (Enter para buscar, Delete para limpar)" 
+            class="kanban-search-input"
+            style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
+          <button class="kanban-search-btn" style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer;">🔍</button>
         </div>
         
-        <div class="kanban-filters">
-          <button class="filter-btn" data-filter="tags">
+        <div class="kanban-filters" style="display: flex; gap: 10px;">
+          <button class="filter-btn" data-filter="tags" style="padding: 8px 16px; border: 1px solid #d1d5db; border-radius: 6px; background: white; cursor: pointer;">
             <span>🏷️ Tags</span>
           </button>
-          <button class="filter-btn" data-filter="origem">
+          <button class="filter-btn" data-filter="origem" style="padding: 8px 16px; border: 1px solid #d1d5db; border-radius: 6px; background: white; cursor: pointer;">
             <span>📍 Origem</span>
           </button>
         </div>
         
-        <button class="kanban-add-btn">
+        <button class="kanban-add-btn" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">
           <span>➕ Nova Coluna</span>
         </button>
       </div>
     `;
     
-    // Eventos do header
-    const searchInput = header.querySelector('.kanban-search-input');
+    // Eventos do header CORRIGIDOS
+    const searchInput = header.querySelector('#kanban-search-input');
+    const searchBtn = header.querySelector('.kanban-search-btn');
+    
+    // Busca com ENTER
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        realizarBusca(searchInput.value);
+      } else if (e.key === 'Delete') {
+        e.preventDefault();
+        searchInput.value = '';
+        limparBusca();
+      }
+    });
+    
+    // Busca ao digitar (com debounce)
     searchInput.addEventListener('input', debounce((e) => {
-      state.filtros.busca = e.target.value;
-      aplicarFiltros();
+      if (e.target.value === '') {
+        limparBusca();
+      }
     }, 300));
     
+    // Botão de busca
+    searchBtn.addEventListener('click', () => {
+      realizarBusca(searchInput.value);
+    });
+    
+    // Filtros de Tags e Origem
+    header.querySelector('[data-filter="tags"]').addEventListener('click', () => {
+      mostrarFiltroTags();
+    });
+    
+    header.querySelector('[data-filter="origem"]').addEventListener('click', () => {
+      mostrarFiltroOrigem();
+    });
+    
+    // Nova coluna
     header.querySelector('.kanban-add-btn').addEventListener('click', adicionarColuna);
     
     return header;
+  }
+  
+  // =====================================================
+  // FUNÇÕES DE BUSCA - NOVAS
+  // =====================================================
+  
+  function realizarBusca(termo) {
+    if (!termo.trim()) {
+      limparBusca();
+      return;
+    }
+    
+    state.filtros.busca = termo.toLowerCase();
+    
+    // Esconde todos os cards primeiro
+    const todosCards = document.querySelectorAll('.kanban-card');
+    todosCards.forEach(card => {
+      card.style.display = 'none';
+    });
+    
+    // Mostra apenas cards que correspondem à busca
+    let encontrados = 0;
+    todosCards.forEach(card => {
+      const clientId = card.dataset.clientId;
+      const client = obterClientePorId(clientId);
+      
+      if (client) {
+        const nome = (client.nome || '').toLowerCase();
+        const telefone = (client.telefone || '').toLowerCase();
+        
+        if (nome.includes(state.filtros.busca) || telefone.includes(state.filtros.busca)) {
+          card.style.display = '';
+          encontrados++;
+        }
+      }
+    });
+    
+    // Atualiza contadores
+    atualizarContadores();
+    
+    // Mostra mensagem se não encontrou nada
+    if (encontrados === 0) {
+      CRMUI.mostrarNotificacao('Nenhum cliente encontrado', 'info');
+    } else {
+      CRMUI.mostrarNotificacao(`${encontrados} cliente(s) encontrado(s)`, 'success');
+    }
+  }
+  
+  function limparBusca() {
+    state.filtros.busca = '';
+    
+    // Mostra todos os cards
+    const todosCards = document.querySelectorAll('.kanban-card');
+    todosCards.forEach(card => {
+      card.style.display = '';
+    });
+    
+    // Atualiza contadores
+    atualizarContadores();
+  }
+  
+  // =====================================================
+  // FILTROS - NOVOS
+  // =====================================================
+  
+  function mostrarFiltroTags() {
+    // Coleta todas as tags únicas
+    const todasTags = new Set();
+    Object.values(window.crmState.kanbanData.clients || {}).forEach(client => {
+      (client.tags || []).forEach(tag => todasTags.add(tag));
+    });
+    
+    const conteudo = `
+      <div class="filtro-tags">
+        <p>Selecione as tags para filtrar:</p>
+        <div style="margin-top: 10px;">
+          ${Array.from(todasTags).map(tag => `
+            <label style="display: block; margin: 5px 0;">
+              <input type="checkbox" value="${tag}" ${state.filtros.tags.includes(tag) ? 'checked' : ''}>
+              ${getTagEmoji(tag)} ${tag}
+            </label>
+          `).join('')}
+        </div>
+      </div>
+    `;
+    
+    const modal = CRMUI.criarModal({
+      titulo: 'Filtrar por Tags',
+      conteudo: conteudo,
+      tamanho: 'small',
+      acoes: [
+        {
+          id: 'limpar',
+          texto: 'Limpar Filtros',
+          tipo: 'secondary',
+          onClick: () => {
+            state.filtros.tags = [];
+            aplicarFiltros();
+            modal.fechar();
+          }
+        },
+        {
+          id: 'aplicar',
+          texto: 'Aplicar',
+          tipo: 'primary',
+          onClick: () => {
+            const checkboxes = document.querySelectorAll('.filtro-tags input[type="checkbox"]:checked');
+            state.filtros.tags = Array.from(checkboxes).map(cb => cb.value);
+            aplicarFiltros();
+            modal.fechar();
+          }
+        }
+      ]
+    });
+  }
+  
+  function mostrarFiltroOrigem() {
+    // Coleta todas as origens únicas
+    const todasOrigens = new Set();
+    Object.values(window.crmState.kanbanData.clients || {}).forEach(client => {
+      if (client.origem) todasOrigens.add(client.origem);
+    });
+    
+    const conteudo = `
+      <div class="filtro-origem">
+        <p>Selecione a origem para filtrar:</p>
+        <div style="margin-top: 10px;">
+          <label style="display: block; margin: 5px 0;">
+            <input type="radio" name="origem" value="" ${!state.filtros.origem ? 'checked' : ''}>
+            Todas as origens
+          </label>
+          ${Array.from(todasOrigens).map(origem => `
+            <label style="display: block; margin: 5px 0;">
+              <input type="radio" name="origem" value="${origem}" ${state.filtros.origem === origem ? 'checked' : ''}>
+              ${origem}
+            </label>
+          `).join('')}
+        </div>
+      </div>
+    `;
+    
+    const modal = CRMUI.criarModal({
+      titulo: 'Filtrar por Origem',
+      conteudo: conteudo,
+      tamanho: 'small',
+      acoes: [
+        {
+          id: 'aplicar',
+          texto: 'Aplicar',
+          tipo: 'primary',
+          onClick: () => {
+            const radio = document.querySelector('.filtro-origem input[type="radio"]:checked');
+            state.filtros.origem = radio ? radio.value : '';
+            aplicarFiltros();
+            modal.fechar();
+          }
+        }
+      ]
+    });
   }
   
   // =====================================================
@@ -116,8 +311,9 @@ window.CRMKanban = (() => {
     // Adiciona botão para nova coluna no final
     const addColBtn = document.createElement('div');
     addColBtn.className = 'kanban-add-column';
+    addColBtn.style.cssText = 'min-width: 280px; display: flex; align-items: center; justify-content: center;';
     addColBtn.innerHTML = `
-      <button class="add-column-btn">
+      <button class="add-column-btn" style="padding: 12px 24px; border: 2px dashed #d1d5db; border-radius: 8px; background: transparent; cursor: pointer;">
         <span>➕</span>
         <span>Adicionar Coluna</span>
       </button>
@@ -134,21 +330,28 @@ window.CRMKanban = (() => {
     const coluna = document.createElement('div');
     coluna.className = 'kanban-column';
     coluna.dataset.colunaId = colunaData.id;
-    coluna.style.borderTopColor = colunaData.color || '#6366f1';
+    coluna.style.cssText = `
+      min-width: 320px;
+      background: #f9fafb;
+      border-radius: 8px;
+      border-top: 4px solid ${colunaData.color || '#6366f1'};
+      padding: 16px;
+    `;
     
     // Header da coluna
     const header = document.createElement('div');
     header.className = 'column-header';
+    header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;';
     header.innerHTML = `
       <div class="column-info">
-        <h3 class="column-title" contenteditable="false">${colunaData.title}</h3>
-        <span class="column-count">${colunaData.clients.length} cards</span>
+        <h3 class="column-title" contenteditable="false" style="margin: 0; font-size: 16px; font-weight: 600;">${colunaData.title}</h3>
+        <span class="column-count" style="font-size: 12px; color: #6b7280;">${colunaData.clients.length} cards</span>
       </div>
       
-      <div class="column-actions">
-        <button class="column-btn edit-column" title="Editar">✏️</button>
-        <button class="column-btn color-column" title="Cor">🎨</button>
-        <button class="column-btn delete-column" title="Excluir">🗑️</button>
+      <div class="column-actions" style="display: flex; gap: 4px;">
+        <button class="column-btn edit-column" title="Editar" style="background: none; border: none; cursor: pointer; padding: 4px;">✏️</button>
+        <button class="column-btn color-column" title="Cor" style="background: none; border: none; cursor: pointer; padding: 4px;">🎨</button>
+        <button class="column-btn delete-column" title="Excluir" style="background: none; border: none; cursor: pointer; padding: 4px;">🗑️</button>
       </div>
     `;
     
@@ -156,6 +359,7 @@ window.CRMKanban = (() => {
     const cardsContainer = document.createElement('div');
     cardsContainer.className = 'column-cards';
     cardsContainer.dataset.colunaId = colunaData.id;
+    cardsContainer.style.cssText = 'min-height: 100px; max-height: calc(100vh - 300px); overflow-y: auto;';
     
     // Renderiza cards da coluna
     colunaData.clients.forEach(clientId => {
@@ -166,7 +370,7 @@ window.CRMKanban = (() => {
       }
     });
 
-    // Adiciona eventos de coluna (editar, cor, excluir)
+    // Adiciona eventos de coluna
     const titulo = header.querySelector('.column-title');
     const editBtn = header.querySelector('.edit-column');
     const colorBtn = header.querySelector('.color-column');
@@ -176,11 +380,14 @@ window.CRMKanban = (() => {
     editBtn.addEventListener('click', () => {
       titulo.contentEditable = true;
       titulo.focus();
-      titulo.classList.add('editing');
+      titulo.style.background = '#fff';
+      titulo.style.padding = '4px 8px';
+      titulo.style.borderRadius = '4px';
 
       const salvarTitulo = () => {
         titulo.contentEditable = false;
-        titulo.classList.remove('editing');
+        titulo.style.background = 'transparent';
+        titulo.style.padding = '0';
         const novoTitulo = titulo.textContent.trim();
 
         if (novoTitulo && novoTitulo !== colunaData.title) {
@@ -200,13 +407,16 @@ window.CRMKanban = (() => {
       });
     });
 
-    // Mudar cor
-    colorBtn.addEventListener('click', () => {
+    // Mudar cor - CORRIGIDO
+    colorBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       mostrarSeletorCor(coluna, colunaData);
     });
 
-    // Excluir coluna
-    deleteBtn.addEventListener('click', async () => {
+    // Excluir coluna - CORRIGIDO
+    deleteBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      
       if (colunaData.clients.length > 0) {
         CRMUI.mostrarNotificacao('Não é possível excluir colunas com cards', 'warning');
         return;
@@ -229,12 +439,21 @@ window.CRMKanban = (() => {
     // Drag & Drop
     configurarDragDrop(cardsContainer);
 
-    // Estatísticas da coluna
+    // Estatísticas da coluna - ATUALIZADO
     const stat = document.createElement('div');
     stat.className = 'column-stat';
+    stat.style.cssText = 'margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb; font-size: 12px;';
+    
+    const { totalAdesao, totalGordurinha } = calcularTotaisColuna(colunaData);
     stat.innerHTML = `
-      <span class="stat-label">Total:</span>
-      <span class="stat-value">R$ ${calcularTotalColuna(colunaData).toLocaleString('pt-BR')}</span>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+        <span style="color: #6b7280;">Adesão:</span>
+        <span style="font-weight: 600;">R$ ${totalAdesao.toLocaleString('pt-BR')}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between;">
+        <span style="color: #6b7280;">Gordurinha:</span>
+        <span style="font-weight: 600;">R$ ${totalGordurinha.toLocaleString('pt-BR')}</span>
+      </div>
     `;
     coluna.appendChild(stat);
 
@@ -242,7 +461,7 @@ window.CRMKanban = (() => {
   }
   
   // =====================================================
-  // CRIAR CARD
+  // CRIAR CARD - ATUALIZADO E MENOR
   // =====================================================
   
   function criarCard(clientData) {
@@ -250,63 +469,74 @@ window.CRMKanban = (() => {
     card.className = 'kanban-card';
     card.dataset.clientId = clientData.id;
     card.draggable = true;
+    card.style.cssText = `
+      background: white;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      cursor: move;
+      transition: all 0.2s;
+    `;
     
     const ultimoNegocio = clientData.deals?.[clientData.deals.length - 1];
-    const valorTotal = clientData.deals?.reduce((sum, deal) => sum + (deal.valor || 0), 0) || 0;
+    const totalAdesao = clientData.deals?.reduce((sum, deal) => sum + (deal.valor_adesao || 0), 0) || 0;
+    const totalGordurinha = clientData.deals?.reduce((sum, deal) => sum + (deal.valor_gordurinha || 0), 0) || 0;
+    
+    // Corrige a imagem
+    const fotoUrl = clientData.photo || clientData.imagem || '/assets/avatar-placeholder.png';
     
     card.innerHTML = `
-      <div class="card-header">
-        <img src="${clientData.photo || '/assets/avatar-placeholder.png'}" 
+      <div class="card-header" style="display: flex; align-items: center; margin-bottom: 8px;">
+        <img src="${fotoUrl}" 
              alt="${clientData.nome}" 
-             class="card-avatar">
-        <div class="card-info">
-          <h4 class="card-name">${clientData.nome}</h4>
-          <p class="card-phone">${clientData.telefone || 'Sem telefone'}</p>
+             class="card-avatar"
+             style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; margin-right: 8px;"
+             onerror="this.src='/assets/avatar-placeholder.png'">
+        <div class="card-info" style="flex: 1; min-width: 0;">
+          <h4 class="card-name" style="margin: 0; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${clientData.nome}</h4>
+          <p class="card-phone" style="margin: 0; font-size: 12px; color: #6b7280;">${clientData.telefone || 'Sem telefone'}</p>
         </div>
-        <button class="card-menu-btn">⋮</button>
+        <button class="card-menu-btn" style="background: none; border: none; cursor: pointer; padding: 4px;">⋮</button>
       </div>
       
       <div class="card-body">
         ${clientData.tags?.length ? `
-          <div class="card-tags">
-            ${clientData.tags.map(tag => `
-              <span class="card-tag">${getTagEmoji(tag)} ${tag}</span>
+          <div class="card-tags" style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px;">
+            ${clientData.tags.slice(0, 2).map(tag => `
+              <span class="card-tag" style="font-size: 11px; padding: 2px 6px; background: #e5e7eb; border-radius: 4px;">${getTagEmoji(tag)}</span>
             `).join('')}
+            ${clientData.tags.length > 2 ? `<span style="font-size: 11px; color: #6b7280;">+${clientData.tags.length - 2}</span>` : ''}
           </div>
         ` : ''}
         
-        ${clientData.observacoes ? `
-          <p class="card-notes">${clientData.observacoes}</p>
+        ${clientData.indicacao ? `
+          <p style="font-size: 11px; color: #6b7280; margin: 4px 0;">
+            📍 Indicação: ${clientData.indicacao.nome}
+          </p>
         ` : ''}
         
-        <div class="card-metrics">
-          <div class="metric">
-            <span class="metric-label">Negócios:</span>
-            <span class="metric-value">${clientData.deals?.length || 0}</span>
+        <div class="card-metrics" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 11px;">
+          <div>
+            <span style="color: #6b7280;">Adesão:</span>
+            <strong style="display: block;">R$ ${totalAdesao.toLocaleString('pt-BR')}</strong>
           </div>
-          <div class="metric">
-            <span class="metric-label">Valor:</span>
-            <span class="metric-value">R$ ${valorTotal.toLocaleString('pt-BR')}</span>
+          <div>
+            <span style="color: #6b7280;">Gordurinha:</span>
+            <strong style="display: block;">R$ ${totalGordurinha.toLocaleString('pt-BR')}</strong>
           </div>
         </div>
-        
-        ${ultimoNegocio ? `
-          <div class="card-last-deal">
-            <span class="deal-date">${formatarDataRelativa(ultimoNegocio.dataCriacao)}</span>
-            <span class="deal-status">${ultimoNegocio.status || 'Em andamento'}</span>
-          </div>
-        ` : ''}
       </div>
       
-      <div class="card-footer">
-        <div class="card-actions">
-          <button class="card-action" title="Editar">✏️</button>
-          <button class="card-action" title="Negócio">💼</button>
-          <button class="card-action" title="Tarefa">📋</button>
-          <button class="card-action" title="WhatsApp">💬</button>
+      <div class="card-footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 8px; border-top: 1px solid #f3f4f6;">
+        <div class="card-actions" style="display: flex; gap: 4px;">
+          <button class="card-action" data-action="editar" title="Editar" style="background: none; border: none; cursor: pointer; padding: 4px; font-size: 14px;">✏️</button>
+          <button class="card-action" data-action="negocio" title="Negócio" style="background: none; border: none; cursor: pointer; padding: 4px; font-size: 14px;">💼</button>
+          <button class="card-action" data-action="tarefa" title="Tarefa" style="background: none; border: none; cursor: pointer; padding: 4px; font-size: 14px;">📋</button>
+          <button class="card-action" data-action="excluir" title="Excluir" style="background: none; border: none; cursor: pointer; padding: 4px; font-size: 14px; color: #ef4444;">🗑️</button>
         </div>
         
-        <div class="card-priority" style="background: ${getPriorityColor(clientData)}"></div>
+        <div class="card-priority" style="width: 8px; height: 8px; border-radius: 50%; background: ${getPriorityColor(clientData)}"></div>
       </div>
     `;
     
@@ -317,28 +547,22 @@ window.CRMKanban = (() => {
   }
   
   // =====================================================
-  // DRAG & DROP
+  // CONFIGURAR EVENTOS DO CARD - CORRIGIDO
   // =====================================================
-  
-  function configurarDragDrop(container) {
-    // Eventos de drag no container
-    container.addEventListener('dragover', handleDragOver);
-    container.addEventListener('drop', handleDrop);
-    container.addEventListener('dragleave', handleDragLeave);
-  }
   
   function configurarEventosCard(card, clientData) {
     // Drag start
     card.addEventListener('dragstart', (e) => {
       state.draggedCard = card;
       card.classList.add('dragging');
+      card.style.opacity = '0.5';
       e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/html', card.innerHTML);
     });
     
     // Drag end
     card.addEventListener('dragend', () => {
       card.classList.remove('dragging');
+      card.style.opacity = '1';
       state.draggedCard = null;
       
       // Remove todos os indicadores
@@ -359,14 +583,188 @@ window.CRMKanban = (() => {
       mostrarMenuCard(card, clientData);
     });
     
-    // Ações do card
+    // Ações do card - CORRIGIDAS
     card.querySelectorAll('.card-action').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const action = btn.title.toLowerCase();
-        executarAcaoCard(action, clientData);
+        const action = btn.dataset.action;
+        
+        switch (action) {
+          case 'editar':
+            editarCliente(clientData.id);
+            break;
+          case 'negocio':
+            novoNegocio(clientData.id);
+            break;
+          case 'tarefa':
+            novaTarefa(clientData.id);
+            break;
+          case 'excluir':
+            excluirCliente(clientData.id);
+            break;
+        }
       });
     });
+  }
+  
+  // =====================================================
+  // SELETOR DE COR - CORRIGIDO
+  // =====================================================
+  
+  function mostrarSeletorCor(coluna, colunaData) {
+    const cores = [
+      { cor: '#6366f1', nome: 'Violeta' },
+      { cor: '#8b5cf6', nome: 'Roxo' },
+      { cor: '#ec4899', nome: 'Rosa' },
+      { cor: '#f59e0b', nome: 'Laranja' },
+      { cor: '#10b981', nome: 'Verde' },
+      { cor: '#3b82f6', nome: 'Azul' },
+      { cor: '#ef4444', nome: 'Vermelho' },
+      { cor: '#14b8a6', nome: 'Teal' }
+    ];
+    
+    const conteudo = `
+      <div class="color-picker-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 20px;">
+        ${cores.map(({ cor, nome }) => `
+          <button class="color-option" 
+                  data-color="${cor}"
+                  style="
+                    width: 60px;
+                    height: 60px;
+                    border: 2px solid ${cor};
+                    border-radius: 8px;
+                    background: ${cor};
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    position: relative;
+                  "
+                  title="${nome}">
+            <span style="
+              position: absolute;
+              bottom: -20px;
+              left: 50%;
+              transform: translateX(-50%);
+              font-size: 11px;
+              color: #6b7280;
+            ">${nome}</span>
+          </button>
+        `).join('')}
+      </div>
+    `;
+    
+    const modal = CRMUI.criarModal({
+      titulo: 'Escolher Cor da Coluna',
+      conteudo: conteudo,
+      tamanho: 'small',
+      acoes: [
+        {
+          id: 'cancelar',
+          texto: 'Cancelar',
+          tipo: 'secondary',
+          onClick: () => modal.fechar()
+        }
+      ]
+    });
+    
+    // Adiciona eventos aos botões de cor
+    setTimeout(() => {
+      document.querySelectorAll('.color-option').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const cor = btn.dataset.color;
+          colunaData.color = cor;
+          coluna.style.borderTopColor = cor;
+          salvarDados();
+          modal.fechar();
+          CRMUI.mostrarNotificacao('Cor alterada com sucesso!', 'success');
+        });
+      });
+    }, 100);
+  }
+  
+  // =====================================================
+  // EXCLUIR COLUNA - CORRIGIDO
+  // =====================================================
+  
+  function excluirColuna(colunaId) {
+    // Remove a coluna do estado
+    state.colunas = state.colunas.filter(col => col.id !== colunaId);
+    
+    // Salva os dados
+    salvarDados();
+    
+    // Re-renderiza apenas as colunas (não fecha o CRM)
+    const container = document.querySelector('.kanban-columns');
+    if (container) {
+      renderizarColunas(container);
+    }
+    
+    CRMUI.mostrarNotificacao('Coluna excluída!', 'success');
+  }
+  
+  // =====================================================
+  // CALCULAR TOTAIS - ATUALIZADO
+  // =====================================================
+  
+  function calcularTotaisColuna(coluna) {
+    let totalAdesao = 0;
+    let totalGordurinha = 0;
+    
+    coluna.clients.forEach(clientId => {
+      const client = obterClientePorId(clientId);
+      if (client && client.deals) {
+        client.deals.forEach(deal => {
+          totalAdesao += deal.valor_adesao || 0;
+          totalGordurinha += deal.valor_gordurinha || 0;
+        });
+      }
+    });
+    
+    return { totalAdesao, totalGordurinha };
+  }
+  
+  // =====================================================
+  // ATUALIZAR CONTADORES - MODIFICADO
+  // =====================================================
+  
+  function atualizarContadores() {
+    document.querySelectorAll('.kanban-column').forEach(colunaEl => {
+      const colunaId = colunaEl.dataset.colunaId;
+      const coluna = state.colunas.find(col => col.id === colunaId);
+      
+      if (coluna) {
+        const visibleCards = colunaEl.querySelectorAll('.kanban-card:not([style*="display: none"])');
+        const countEl = colunaEl.querySelector('.column-count');
+        if (countEl) {
+          countEl.textContent = `${visibleCards.length} cards`;
+        }
+        
+        // Atualiza totais
+        const { totalAdesao, totalGordurinha } = calcularTotaisColuna(coluna);
+        const statEl = colunaEl.querySelector('.column-stat');
+        if (statEl) {
+          statEl.innerHTML = `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span style="color: #6b7280;">Adesão:</span>
+              <span style="font-weight: 600;">R$ ${totalAdesao.toLocaleString('pt-BR')}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #6b7280;">Gordurinha:</span>
+              <span style="font-weight: 600;">R$ ${totalGordurinha.toLocaleString('pt-BR')}</span>
+            </div>
+          `;
+        }
+      }
+    });
+  }
+  
+  // =====================================================
+  // DRAG & DROP
+  // =====================================================
+  
+  function configurarDragDrop(container) {
+    container.addEventListener('dragover', handleDragOver);
+    container.addEventListener('drop', handleDrop);
+    container.addEventListener('dragleave', handleDragLeave);
   }
   
   function handleDragOver(e) {
@@ -374,13 +772,13 @@ window.CRMKanban = (() => {
     e.dataTransfer.dropEffect = 'move';
     
     const container = e.currentTarget;
-    container.classList.add('drag-over');
+    container.style.background = '#e5e7eb';
   }
   
   function handleDrop(e) {
     e.preventDefault();
     const container = e.currentTarget;
-    container.classList.remove('drag-over');
+    container.style.background = '';
     
     if (state.draggedCard) {
       const oldColumnId = state.draggedCard.closest('.column-cards').dataset.colunaId;
@@ -388,10 +786,7 @@ window.CRMKanban = (() => {
       const clientId = state.draggedCard.dataset.clientId;
       
       if (oldColumnId !== newColumnId) {
-        // Move o card visualmente
         container.appendChild(state.draggedCard);
-        
-        // Atualiza os dados
         moverCard(clientId, oldColumnId, newColumnId);
       }
     }
@@ -399,145 +794,8 @@ window.CRMKanban = (() => {
   
   function handleDragLeave(e) {
     if (!e.currentTarget.contains(e.relatedTarget)) {
-      e.currentTarget.classList.remove('drag-over');
+      e.currentTarget.style.background = '';
     }
-  }
-  
-  function executarAcaoCard(action, clientData) {
-    switch (action) {
-      case 'editar':
-        editarCliente(clientData.id);
-        break;
-      case 'negócio':
-        novoNegocio(clientData.id);
-        break;
-      case 'tarefa':
-        novaTarefa(clientData.id);
-        break;
-      case 'whatsapp':
-        abrirWhatsApp(clientData.telefone);
-        break;
-    }
-  }
-  
-  function abrirWhatsApp(telefone) {
-    if (telefone) {
-      const numero = telefone.replace(/\D/g, '');
-      window.open(`https://wa.me/55${numero}`, '_blank');
-    }
-  }
-  
-  // FUNÇÃO CORRIGIDA - Seletor de cor
-  function mostrarSeletorCor(coluna, colunaData) {
-    const modal = CRMUI.criarModal({
-      titulo: 'Escolher Cor',
-      conteudo: `
-        <div class="color-picker-modal">
-          ${criarOpçõesCores()}
-        </div>
-      `,
-      acoes: [
-        {
-          id: 'cancelar',
-          texto: 'Cancelar',
-          tipo: 'secondary',
-          onClick: () => modal.fechar()
-        },
-        {
-          id: 'aplicar',
-          texto: 'Aplicar',
-          tipo: 'primary',
-          onClick: () => {
-            const corSelecionada = document.querySelector('.color-option.selected')?.dataset.color;
-            if (corSelecionada) {
-              colunaData.color = corSelecionada;
-              coluna.style.borderTopColor = corSelecionada;
-              salvarDados();
-            }
-            modal.fechar();
-          }
-        }
-      ]
-    });
-  }
-  
-  // =====================================================
-  // OPERAÇÕES COM COLUNAS
-  // =====================================================
-  
-  // FUNÇÃO CORRIGIDA - Adicionar coluna
-  async function adicionarColuna() {
-    const modal = CRMUI.criarModal({
-      titulo: 'Nova Coluna',
-      conteudo: `
-        <form id="form-nova-coluna">
-          <div class="form-field">
-            <label>Nome da Coluna</label>
-            <input type="text" name="titulo" required placeholder="Ex: Em Negociação">
-          </div>
-          
-          <div class="form-field">
-            <label>Cor da Coluna</label>
-            <div class="color-picker">
-              ${criarOpçõesCores()}
-            </div>
-          </div>
-          
-          <div class="form-field">
-            <label>Posição</label>
-            <select name="posicao">
-              <option value="fim">No final</option>
-              ${state.colunas.map((col, idx) => 
-                `<option value="${idx}">Antes de "${col.title}"</option>`
-              ).join('')}
-            </select>
-          </div>
-        </form>
-      `,
-      acoes: [
-        {
-          id: 'cancelar',
-          texto: 'Cancelar',
-          tipo: 'secondary',
-          onClick: () => modal.fechar()
-        },
-        {
-          id: 'criar',
-          texto: 'Criar Coluna',
-          tipo: 'primary',
-          onClick: () => {
-            const form = document.getElementById('form-nova-coluna');
-            const formData = new FormData(form);
-            
-            const novaColuna = {
-              id: 'col_' + Date.now(),
-              title: formData.get('titulo'),
-              color: document.querySelector('.color-option.selected')?.dataset.color || '#6366f1',
-              clients: []
-            };
-            
-            const posicao = formData.get('posicao');
-            if (posicao === 'fim') {
-              state.colunas.push(novaColuna);
-            } else {
-              state.colunas.splice(parseInt(posicao), 0, novaColuna);
-            }
-            
-            salvarDados();
-            renderizarColunas(document.querySelector('.kanban-columns'));
-            modal.fechar();
-            CRMUI.mostrarNotificacao('Coluna criada com sucesso!', 'success');
-          }
-        }
-      ]
-    });
-  }
-  
-  function excluirColuna(colunaId) {
-    state.colunas = state.colunas.filter(col => col.id !== colunaId);
-    salvarDados();
-    renderizarColunas(document.querySelector('.kanban-columns'));
-    CRMUI.mostrarNotificacao('Coluna excluída!', 'success');
   }
   
   // =====================================================
@@ -545,37 +803,19 @@ window.CRMKanban = (() => {
   // =====================================================
   
   function moverCard(clientId, oldColumnId, newColumnId) {
-    // Remove da coluna antiga
     const oldColumn = state.colunas.find(col => col.id === oldColumnId);
     if (oldColumn) {
       oldColumn.clients = oldColumn.clients.filter(id => id !== clientId);
     }
     
-    // Adiciona na nova coluna
     const newColumn = state.colunas.find(col => col.id === newColumnId);
     if (newColumn) {
       newColumn.clients.push(clientId);
     }
     
-    // Atualiza contadores
     atualizarContadores();
-    
-    // Salva
     salvarDados();
-    
-    // Notifica
     CRMUI.mostrarNotificacao(`Card movido para ${newColumn.title}`, 'success');
-  }
-  
-  function salvarOrdemCards(container) {
-    const colunaId = container.dataset.colunaId;
-    const coluna = state.colunas.find(col => col.id === colunaId);
-    
-    if (coluna) {
-      const cards = container.querySelectorAll('.kanban-card');
-      coluna.clients = Array.from(cards).map(card => card.dataset.clientId);
-      salvarDados();
-    }
   }
   
   function mostrarMenuCard(card, clientData) {
@@ -588,7 +828,7 @@ window.CRMKanban = (() => {
       { texto: 'Duplicar', icone: '📑', onClick: () => duplicarCliente(clientData.id) },
       { separador: true },
       { texto: 'Arquivar', icone: '📁', onClick: () => arquivarCliente(clientData.id) },
-      { texto: 'Excluir', icone: '🗑️', onClick: () => excluirCliente(clientData.id), disabled: false }
+      { texto: 'Excluir', icone: '🗑️', onClick: () => excluirCliente(clientData.id) }
     ];
     
     CRMUI.criarMenu(menuItems, {
@@ -639,7 +879,6 @@ window.CRMKanban = (() => {
       card.style.display = visible ? '' : 'none';
     });
     
-    // Atualiza contadores
     atualizarContadores();
   }
   
@@ -650,33 +889,6 @@ window.CRMKanban = (() => {
   function obterClientePorId(clientId) {
     const kanbanData = window.crmState?.kanbanData;
     return kanbanData?.clients?.[clientId];
-  }
-  
-  function calcularTotalColuna(coluna) {
-    return coluna.clients.reduce((total, clientId) => {
-      const client = obterClientePorId(clientId);
-      if (!client) return total;
-      
-      const valorCliente = (client.deals || [])
-        .reduce((sum, deal) => sum + (deal.valor || 0), 0);
-      
-      return total + valorCliente;
-    }, 0);
-  }
-  
-  function atualizarContadores() {
-    document.querySelectorAll('.kanban-column').forEach(colunaEl => {
-      const colunaId = colunaEl.dataset.colunaId;
-      const coluna = state.colunas.find(col => col.id === colunaId);
-      
-      if (coluna) {
-        const visibleCards = colunaEl.querySelectorAll('.kanban-card:not([style*="display: none"])');
-        colunaEl.querySelector('.column-count').textContent = `${visibleCards.length} cards`;
-        
-        const total = calcularTotalColuna(coluna);
-        colunaEl.querySelector('.stat-value').textContent = `R$ ${total.toLocaleString('pt-BR')}`;
-      }
-    });
   }
   
   function getTagEmoji(tag) {
@@ -733,7 +945,6 @@ window.CRMKanban = (() => {
     `;
   }
   
-  // Debounce helper
   function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -751,7 +962,6 @@ window.CRMKanban = (() => {
   // =====================================================
   
   function editarCliente(clientId) {
-    // Envia mensagem para o content.js principal
     window.postMessage({
       type: 'CRM_ACTION',
       action: 'editarCliente',
@@ -776,7 +986,6 @@ window.CRMKanban = (() => {
   }
   
   function verHistorico(clientId) {
-    // Implementar visualização de histórico
     CRMUI.mostrarNotificacao('Histórico em desenvolvimento...', 'info');
   }
   
@@ -791,10 +1000,8 @@ window.CRMKanban = (() => {
       dataCadastro: new Date().toISOString()
     };
     
-    // Adiciona ao storage
     window.crmState.kanbanData.clients[novoCliente.id] = novoCliente;
     
-    // Adiciona à primeira coluna
     if (state.colunas.length > 0) {
       state.colunas[0].clients.push(novoCliente.id);
     }
@@ -811,7 +1018,6 @@ window.CRMKanban = (() => {
     });
     
     if (confirmar) {
-      // Implementar arquivamento
       CRMUI.mostrarNotificacao('Arquivamento em desenvolvimento...', 'info');
     }
   }
@@ -849,6 +1055,110 @@ window.CRMKanban = (() => {
   }
   
   // =====================================================
+  // ADICIONAR COLUNA - CORRIGIDA
+  // =====================================================
+  
+  async function adicionarColuna() {
+    const cores = [
+      { cor: '#6366f1', nome: 'Violeta' },
+      { cor: '#8b5cf6', nome: 'Roxo' },
+      { cor: '#ec4899', nome: 'Rosa' },
+      { cor: '#f59e0b', nome: 'Laranja' },
+      { cor: '#10b981', nome: 'Verde' },
+      { cor: '#3b82f6', nome: 'Azul' },
+      { cor: '#ef4444', nome: 'Vermelho' },
+      { cor: '#14b8a6', nome: 'Teal' }
+    ];
+    
+    const conteudo = `
+      <form id="form-nova-coluna">
+        <div class="form-field" style="margin-bottom: 16px;">
+          <label style="display: block; margin-bottom: 4px; font-weight: 500;">Nome da Coluna</label>
+          <input type="text" name="titulo" required placeholder="Ex: Em Negociação" 
+                 style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
+        </div>
+        
+        <div class="form-field" style="margin-bottom: 16px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 500;">Cor da Coluna</label>
+          <div class="color-picker" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+            ${cores.map(({ cor, nome }, index) => `
+              <label style="position: relative; cursor: pointer;">
+                <input type="radio" name="cor" value="${cor}" ${index === 0 ? 'checked' : ''} 
+                       style="position: absolute; opacity: 0;">
+                <div style="
+                  width: 40px;
+                  height: 40px;
+                  background: ${cor};
+                  border-radius: 6px;
+                  border: 2px solid transparent;
+                  transition: all 0.2s;
+                " 
+                class="color-box"
+                onclick="this.parentElement.querySelector('input').checked = true;
+                         document.querySelectorAll('.color-box').forEach(el => el.style.borderColor = 'transparent');
+                         this.style.borderColor = '#111827';">
+                </div>
+              </label>
+            `).join('')}
+          </div>
+        </div>
+        
+        <div class="form-field">
+          <label style="display: block; margin-bottom: 4px; font-weight: 500;">Posição</label>
+          <select name="posicao" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
+            <option value="fim">No final</option>
+            ${state.colunas.map((col, idx) => 
+              `<option value="${idx}">Antes de "${col.title}"</option>`
+            ).join('')}
+          </select>
+        </div>
+      </form>
+    `;
+    
+    const modal = CRMUI.criarModal({
+      titulo: 'Nova Coluna',
+      conteudo: conteudo,
+      tamanho: 'small',
+      acoes: [
+        {
+          id: 'cancelar',
+          texto: 'Cancelar',
+          tipo: 'secondary',
+          onClick: () => modal.fechar()
+        },
+        {
+          id: 'criar',
+          texto: 'Criar Coluna',
+          tipo: 'primary',
+          onClick: () => {
+            const form = document.getElementById('form-nova-coluna');
+            const formData = new FormData(form);
+            
+            const novaColuna = {
+              id: 'col_' + Date.now(),
+              title: formData.get('titulo'),
+              color: formData.get('cor') || '#6366f1',
+              clients: []
+            };
+            
+            const posicao = formData.get('posicao');
+            if (posicao === 'fim') {
+              state.colunas.push(novaColuna);
+            } else {
+              state.colunas.splice(parseInt(posicao), 0, novaColuna);
+            }
+            
+            salvarDados();
+            renderizarColunas(document.querySelector('.kanban-columns'));
+            modal.fechar();
+            CRMUI.mostrarNotificacao('Coluna criada com sucesso!', 'success');
+          }
+        }
+      ]
+    });
+  }
+  
+  // =====================================================
   // DADOS E PERSISTÊNCIA
   // =====================================================
   
@@ -858,7 +1168,6 @@ window.CRMKanban = (() => {
     if (kanbanData && kanbanData.columns) {
       state.colunas = kanbanData.columns;
     } else {
-      // Colunas padrão
       state.colunas = [
         { id: 'leads', title: '🎯 Leads', clients: [], color: '#6366f1' },
         { id: 'negotiation', title: '💬 Em Negociação', clients: [], color: '#8b5cf6' },
@@ -873,11 +1182,9 @@ window.CRMKanban = (() => {
     if (window.crmState && window.crmState.kanbanData) {
       window.crmState.kanbanData.columns = state.colunas;
       
-      // Verifica se CRMStorage existe antes de usar
       if (window.CRMStorage && typeof CRMStorage.salvar === 'function') {
         await CRMStorage.salvar('kanban_data', window.crmState.kanbanData);
       } else {
-        // Fallback para localStorage se CRMStorage não estiver disponível
         localStorage.setItem('crm_kanban_data', JSON.stringify(window.crmState.kanbanData));
       }
     }
@@ -893,7 +1200,16 @@ window.CRMKanban = (() => {
       // Ctrl+F para buscar
       if (e.ctrlKey && e.key === 'f' && document.querySelector('.crm-kanban-board')) {
         e.preventDefault();
-        document.querySelector('.kanban-search-input')?.focus();
+        document.querySelector('#kanban-search-input')?.focus();
+      }
+      
+      // ESC para limpar busca
+      if (e.key === 'Escape' && state.filtros.busca) {
+        const searchInput = document.querySelector('#kanban-search-input');
+        if (searchInput) {
+          searchInput.value = '';
+          limparBusca();
+        }
       }
     });
   }
@@ -908,19 +1224,16 @@ window.CRMKanban = (() => {
     aplicarFiltros,
     atualizarContadores,
     
-    // Estado
     get estado() {
       return { ...state };
     },
     
-    // Ações
     adicionarColuna,
     excluirColuna,
     moverCard,
     
-    // Utilitários
     obterClientePorId,
-    calcularTotalColuna
+    calcularTotaisColuna
   };
 
 })();
