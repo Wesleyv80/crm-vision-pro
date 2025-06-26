@@ -95,7 +95,7 @@ window.CRMUI = (() => {
     return card;
   }
   
-  // Cria um modal
+  // Cria um modal - FUNÇÃO CORRIGIDA
   function criarModal(config = {}) {
     const {
       titulo = '',
@@ -109,7 +109,9 @@ window.CRMUI = (() => {
     
     // Remove modal existente se houver
     const modalExistente = document.querySelector('.crm-modal-container');
-    if (modalExistente) modalExistente.remove();
+    if (modalExistente) {
+      modalExistente.remove();
+    }
     
     const container = document.createElement('div');
     container.className = 'crm-modal-container';
@@ -121,7 +123,7 @@ window.CRMUI = (() => {
     let html = `
       <div class="modal-header">
         <h2 class="modal-title">${titulo}</h2>
-        <button class="modal-close">&times;</button>
+        <button class="modal-close" type="button">&times;</button>
       </div>
       <div class="modal-content">${conteudo}</div>
     `;
@@ -130,7 +132,7 @@ window.CRMUI = (() => {
       html += '<div class="modal-footer">';
       acoes.forEach(acao => {
         const btnClass = acao.tipo || 'secondary';
-        html += `<button class="crm-btn btn-${btnClass}" data-action="${acao.id}">${acao.texto}</button>`;
+        html += `<button class="crm-btn btn-${btnClass}" type="button" data-action="${acao.id}">${acao.texto}</button>`;
       });
       html += '</div>';
     }
@@ -138,26 +140,63 @@ window.CRMUI = (() => {
     modal.innerHTML = html;
     container.appendChild(modal);
     
-    // Eventos
+    // Função para fechar o modal
+    const fecharEsteModal = () => {
+      container.classList.remove('show');
+      setTimeout(() => {
+        if (container.parentNode) {
+          container.parentNode.removeChild(container);
+        }
+        state.modalAberto = false;
+      }, 300);
+      onClose();
+    };
+    
+    // Eventos - CORRIGIDOS
     container.addEventListener('click', (e) => {
+      // Só fecha se clicar no container (overlay), não no modal
       if (e.target === container) {
-        fecharModal();
-        onClose();
+        fecharEsteModal();
       }
     });
     
-    modal.querySelector('.modal-close').addEventListener('click', () => {
-      fecharModal();
-      onClose();
+    // Previne que cliques no modal fechem o modal
+    modal.addEventListener('click', (e) => {
+      e.stopPropagation();
     });
     
+    // Botão X para fechar
+    const btnClose = modal.querySelector('.modal-close');
+    if (btnClose) {
+      btnClose.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        fecharEsteModal();
+      });
+    }
+    
+    // Eventos das ações
     acoes.forEach(acao => {
       const btn = modal.querySelector(`[data-action="${acao.id}"]`);
       if (btn && acao.onClick) {
-        btn.addEventListener('click', acao.onClick);
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          acao.onClick();
+        });
       }
     });
     
+    // ESC para fechar
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        fecharEsteModal();
+        document.removeEventListener('keydown', handleEsc);
+      }
+    };
+    document.addEventListener('keydown', handleEsc);
+    
+    // Adiciona ao DOM
     document.body.appendChild(container);
     
     // Anima entrada
@@ -167,7 +206,11 @@ window.CRMUI = (() => {
     
     state.modalAberto = true;
     
-    return container;
+    // Retorna o container e função para fechar
+    return {
+      elemento: container,
+      fechar: fecharEsteModal
+    };
   }
   
   // =====================================================
@@ -818,7 +861,7 @@ window.CRMUI = (() => {
             texto: textoBotaoCancelar,
             tipo: 'secondary',
             onClick: () => {
-              fecharModal();
+              modal.fechar();
               onCancel();
               resolve(false);
             }
@@ -828,7 +871,7 @@ window.CRMUI = (() => {
             texto: textoBotaoConfirmar,
             tipo: tipo === 'danger' ? 'danger' : 'primary',
             onClick: () => {
-              fecharModal();
+              modal.fechar();
               onConfirm();
               resolve(true);
             }
@@ -838,12 +881,17 @@ window.CRMUI = (() => {
     });
   }
   
+  // Função global para fechar modal - CORRIGIDA
   function fecharModal() {
     const modal = document.querySelector('.crm-modal-container');
     if (modal) {
       modal.classList.remove('show');
-      setTimeout(() => modal.remove(), 300);
-      state.modalAberto = false;
+      setTimeout(() => {
+        if (modal.parentNode) {
+          modal.parentNode.removeChild(modal);
+        }
+        state.modalAberto = false;
+      }, 300);
     }
   }
   
@@ -908,120 +956,41 @@ window.CRMUI = (() => {
   // =====================================================
   
   function copiarTexto(texto) {
+    // Tenta usar a API moderna primeiro
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(texto).then(() => {
+        mostrarNotificacao('Copiado para a área de transferência!', 'success');
+      }).catch(() => {
+        // Fallback para método antigo
+        copiarTextoFallback(texto);
+      });
+    } else {
+      copiarTextoFallback(texto);
+    }
+  }
+  
+  function copiarTextoFallback(texto) {
     const textarea = document.createElement('textarea');
     textarea.value = texto;
     textarea.style.position = 'fixed';
     textarea.style.opacity = '0';
+    textarea.style.left = '-9999px';
     
     document.body.appendChild(textarea);
     textarea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textarea);
     
-    mostrarNotificacao('Copiado para a área de transferência!', 'success');
+    try {
+      document.execCommand('copy');
+      mostrarNotificacao('Copiado para a área de transferência!', 'success');
+    } catch (err) {
+      mostrarNotificacao('Erro ao copiar texto', 'error');
+    }
+    
+    document.body.removeChild(textarea);
   }
   
   function formatarData(data, formato = 'DD/MM/YYYY') {
     const d = new Date(data);
     const dia = String(d.getDate()).padStart(2, '0');
     const mes = String(d.getMonth() + 1).padStart(2, '0');
-    const ano = d.getFullYear();
-    const hora = String(d.getHours()).padStart(2, '0');
-    const minuto = String(d.getMinutes()).padStart(2, '0');
-    
-    return formato
-      .replace('DD', dia)
-      .replace('MM', mes)
-      .replace('YYYY', ano)
-      .replace('HH', hora)
-      .replace('mm', minuto);
-  }
-  
-  function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-      const later = () => {
-        clearTimeout(timeout);
-        func(...args);
-      };
-      clearTimeout(timeout);
-      timeout = setTimeout(later, wait);
-    };
-  }
-  
-  // =====================================================
-  // INICIALIZAÇÃO
-  // =====================================================
-  
-  function inicializar() {
-    console.log('🎨 Módulo UI inicializado');
-    carregarTema();
-    
-    // Adiciona listeners globais
-    document.addEventListener('click', (e) => {
-      // Fecha menus abertos
-      document.querySelectorAll('.crm-menu.show').forEach(menu => {
-        fecharMenu(menu);
-      });
-      
-      // Efeito ripple em botões
-      if (e.target.classList.contains('crm-btn')) {
-        efeitoRipple(e.target, e);
-      }
-    });
-  }
-  
-  // =====================================================
-  // API PÚBLICA
-  // =====================================================
-  
-  return {
-    // Elementos
-    criarBotao,
-    criarCard,
-    criarModal,
-    criarCampo,
-    criarFormulario,
-    criarMenu,
-    criarTabs,
-    criarProgressBar,
-    criarBadge,
-    criarAvatar,
-    criarEmptyState,
-    
-    // Notificações
-    mostrarNotificacao,
-    mostrarLoading,
-    confirmar,
-    
-    // Tooltips
-    adicionarTooltip,
-    
-    // Animações
-    animarElemento,
-    efeitoRipple,
-    
-    // Tema
-    alternarTema,
-    aplicarTema,
-    
-    // Utilitários
-    copiarTexto,
-    formatarData,
-    debounce,
-    
-    // Modal
-    fecharModal,
-    
-    // Estado
-    get estado() {
-      return { ...state };
-    },
-    
-    // Inicialização
-    inicializar
-  };
-})();
-
-// Auto-inicializa quando carregado
-CRMUI.inicializar();
+    const ano = d.
