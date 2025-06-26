@@ -15,7 +15,9 @@ window.crmState = {
     totalClients: 0,
     totalDeals: 0,
     totalRevenue: 0,
-    conversionRate: 0
+    conversionRate: 0,
+    totalAdesao: 0,      // NOVO
+    totalGordurinha: 0   // NOVO
   }
 };
 
@@ -33,6 +35,9 @@ async function iniciarExtensao() {
   
   console.log('✅ WhatsApp Web detectado!');
   
+  // Aguarda os módulos carregarem
+  await aguardarModulos();
+  
   // 1. Carrega dados salvos
   await carregarDadosSalvos();
   
@@ -49,7 +54,33 @@ async function iniciarExtensao() {
   configurarAtalhos();
   
   console.log('🎉 CRM Vision Pro carregado com sucesso!');
-  mostrarNotificacao('CRM Vision Pro está ativo!', 'success');
+  
+  // Usa CRMUI para mostrar notificação
+  if (window.CRMUI) {
+    CRMUI.mostrarNotificacao('CRM Vision Pro está ativo!', 'success');
+  }
+}
+
+// =====================================================
+// AGUARDAR MÓDULOS CARREGAREM
+// =====================================================
+async function aguardarModulos() {
+  return new Promise((resolve) => {
+    const verificarModulos = () => {
+      if (window.CRMUI && window.CRMKanban && window.CRMStorage) {
+        console.log('✅ Todos os módulos carregados');
+        resolve();
+      } else {
+        console.log('⏳ Aguardando módulos...', {
+          CRMUI: !!window.CRMUI,
+          CRMKanban: !!window.CRMKanban,
+          CRMStorage: !!window.CRMStorage
+        });
+        setTimeout(verificarModulos, 100);
+      }
+    };
+    verificarModulos();
+  });
 }
 
 // =====================================================
@@ -204,10 +235,17 @@ function configurarEventosSidebar() {
 }
 
 // =====================================================
-// EXECUTAR AÇÕES
+// EXECUTAR AÇÕES - CORRIGIDO
 // =====================================================
 async function executarAcao(action) {
   console.log(`🎯 Executando ação: ${action}`);
+  
+  // Verifica se os módulos estão disponíveis
+  if (!window.CRMUI) {
+    console.error('❌ CRMUI não está disponível');
+    alert('Erro: Módulo UI não carregado. Recarregue a página.');
+    return;
+  }
   
   switch (action) {
     case 'dashboard':
@@ -240,61 +278,65 @@ async function executarAcao(action) {
 }
 
 // =====================================================
-// CAPTURAR CONTATO ATUAL
+// CAPTURAR CONTATO ATUAL - ATUALIZADO COM CAMPOS CONDICIONAIS
 // =====================================================
 async function capturarContatoAtual() {
-  mostrarNotificacao('Capturando dados do contato...', 'info');
+  CRMUI.mostrarNotificacao('Capturando dados do contato...', 'info');
+  
+  // Verifica se o módulo de captura existe
+  if (!window.CRMCapture) {
+    CRMUI.mostrarNotificacao('Módulo de captura não encontrado!', 'error');
+    return;
+  }
   
   // Usa o módulo de captura
   const dadosContato = CRMCapture.capturarDadosContato();
   
   if (!dadosContato || !dadosContato.nome) {
-    mostrarNotificacao('Nenhum contato ativo detectado!', 'warning');
+    CRMUI.mostrarNotificacao('Nenhum contato ativo detectado!', 'warning');
     return;
   }
   
-  // Mostra painel de cadastro
+  // Mostra painel de cadastro usando CRMUI
   mostrarFormularioCadastro(dadosContato);
 }
 
 // =====================================================
-// MOSTRAR FORMULÁRIO DE CADASTRO
+// MOSTRAR FORMULÁRIO DE CADASTRO - ATUALIZADO COM CAMPOS CONDICIONAIS
 // =====================================================
 function mostrarFormularioCadastro(dadosIniciais = {}) {
-  const panel = document.querySelector('#crm-main-panel');
-  const content = document.querySelector('#panel-content');
-  const overlay = document.querySelector('#crm-overlay');
-  
-  content.innerHTML = `
+  const conteudo = `
     <div class="cadastro-form">
       <div class="form-header">
-        <img src="${dadosIniciais.imagem || ''}" class="contact-photo" alt="Foto">
+        <img src="${dadosIniciais.imagem || '/assets/avatar-placeholder.png'}" 
+             class="contact-photo" 
+             alt="Foto" 
+             style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
         <div class="contact-info">
           <h3>${dadosIniciais.nome || 'Novo Contato'}</h3>
           <p>${dadosIniciais.telefone || ''}</p>
         </div>
       </div>
       
-      <form id="form-cadastro">
-        <div class="form-group">
-          <label>Nome Completo</label>
-          <input type="text" id="nome" value="${dadosIniciais.nome || ''}" required>
+      <form id="form-cadastro-contato" style="margin-top: 20px;">
+        <div class="form-field">
+          <label>Nome Completo <span class="required">*</span></label>
+          <input type="text" name="nome" value="${dadosIniciais.nome || ''}" required>
         </div>
         
-        <div class="form-group">
-          <label>Telefone</label>
-          <input type="text" id="telefone" value="${dadosIniciais.telefone || ''}" required>
+        <div class="form-field">
+          <label>Telefone <span class="required">*</span></label>
+          <input type="tel" name="telefone" value="${dadosIniciais.telefone || ''}" required>
         </div>
         
-        <div class="form-group">
+        <div class="form-field">
           <label>Email</label>
-          <input type="email" id="email" placeholder="email@exemplo.com">
+          <input type="email" name="email" placeholder="email@exemplo.com">
         </div>
         
-        <div class="form-group">
+        <div class="form-field">
           <label>Origem</label>
-          <select id="origem">
-            <option value="">Selecione...</option>
+          <select name="origem" id="origem-select">
             <option value="whatsapp">WhatsApp</option>
             <option value="indicacao">Indicação</option>
             <option value="site">Site</option>
@@ -303,104 +345,245 @@ function mostrarFormularioCadastro(dadosIniciais = {}) {
           </select>
         </div>
         
-        <div class="form-group">
-          <label>Tags</label>
-          <div class="tags-container">
-            <label class="tag-option">
-              <input type="checkbox" value="potencial-alto">
-              <span>🔥 Potencial Alto</span>
-            </label>
-            <label class="tag-option">
-              <input type="checkbox" value="urgente">
-              <span>⚡ Urgente</span>
-            </label>
-            <label class="tag-option">
-              <input type="checkbox" value="retorno">
-              <span>🔄 Retorno</span>
-            </label>
-            <label class="tag-option">
-              <input type="checkbox" value="vip">
-              <span>⭐ VIP</span>
-            </label>
+        <!-- Campos condicionais para indicação -->
+        <div id="campos-indicacao" style="display: none;">
+          <div class="form-field">
+            <label>Nome do Indicador</label>
+            <input type="text" name="indicador_nome" placeholder="Quem indicou?">
+          </div>
+          <div class="form-field">
+            <label>Telefone do Indicador</label>
+            <input type="tel" name="indicador_telefone" placeholder="Telefone de quem indicou">
           </div>
         </div>
         
-        <div class="form-group">
-          <label>Observações</label>
-          <textarea id="observacoes" rows="3" placeholder="Adicione notas sobre este contato..."></textarea>
+        <div class="form-field">
+          <label>Tags</label>
+          <div class="tags-container">
+            <label><input type="checkbox" name="tags" value="potencial-alto"> 🔥 Potencial Alto</label>
+            <label><input type="checkbox" name="tags" value="urgente"> ⚡ Urgente</label>
+            <label><input type="checkbox" name="tags" value="retorno"> 🔄 Retorno</label>
+            <label><input type="checkbox" name="tags" value="vip"> ⭐ VIP</label>
+          </div>
         </div>
         
-        <div class="form-actions">
-          <button type="button" class="btn-secondary" onclick="fecharPainel()">Cancelar</button>
-          <button type="submit" class="btn-primary">
-            <span>💾</span> Salvar Contato
-          </button>
+        <div class="form-field">
+          <label>Observações</label>
+          <textarea name="observacoes" rows="3" placeholder="Adicione notas sobre este contato..."></textarea>
         </div>
       </form>
     </div>
   `;
   
-  // Mostra painel
-  panel.classList.remove('hidden');
-  overlay.classList.remove('hidden');
+  // Cria modal usando CRMUI
+  const modal = CRMUI.criarModal({
+    titulo: 'Cadastrar Contato',
+    conteudo: conteudo,
+    tamanho: 'medium',
+    acoes: [
+      {
+        id: 'cancelar',
+        texto: 'Cancelar',
+        tipo: 'secondary',
+        onClick: () => modal.fechar()
+      },
+      {
+        id: 'salvar',
+        texto: '💾 Salvar e Continuar',
+        tipo: 'primary',
+        onClick: () => {
+          const form = document.getElementById('form-cadastro-contato');
+          const formData = new FormData(form);
+          const dados = {};
+          
+          // Coleta dados do formulário
+          for (let [key, value] of formData.entries()) {
+            if (key === 'tags') {
+              if (!dados.tags) dados.tags = [];
+              dados.tags.push(value);
+            } else {
+              dados[key] = value;
+            }
+          }
+          
+          salvarContatoEContinuar(dados);
+        }
+      }
+    ]
+  });
   
-  // Configura envio do formulário
-  document.getElementById('form-cadastro').addEventListener('submit', salvarContato);
+  // Configura campo condicional de indicação
+  setTimeout(() => {
+    const origemSelect = document.getElementById('origem-select');
+    const camposIndicacao = document.getElementById('campos-indicacao');
+    
+    origemSelect.addEventListener('change', (e) => {
+      if (e.target.value === 'indicacao') {
+        camposIndicacao.style.display = 'block';
+      } else {
+        camposIndicacao.style.display = 'none';
+      }
+    });
+  }, 100);
 }
 
 // =====================================================
-// SALVAR CONTATO
+// SALVAR CONTATO E ABRIR CADASTRO DE NEGÓCIOS
 // =====================================================
-async function salvarContato(e) {
-  e.preventDefault();
-  
-  // Coleta dados do formulário
-  const novoCliente = {
-    id: 'client_' + Date.now(),
-    nome: document.getElementById('nome').value,
-    telefone: document.getElementById('telefone').value,
-    email: document.getElementById('email').value,
-    origem: document.getElementById('origem').value,
-    tags: Array.from(document.querySelectorAll('.tags-container input:checked')).map(cb => cb.value),
-    observacoes: document.getElementById('observacoes').value,
-    dataCadastro: new Date().toISOString(),
-    ultimaInteracao: new Date().toISOString(),
-    status: 'lead',
-    deals: [],
-    tasks: []
-  };
-  
-  // Salva no estado
-  window.crmState.kanbanData.clients[novoCliente.id] = novoCliente;
-  
-  // Adiciona à primeira coluna
-  window.crmState.kanbanData.columns[0].clients.push(novoCliente.id);
-  
-  // Salva no storage
-  await CRMStorage.salvar('kanban_data', window.crmState.kanbanData);
-  
-  // Feedback visual
-  mostrarNotificacao('✅ Contato salvo com sucesso!', 'success');
-  
-  // Fecha painel
-  fecharPainel();
-  
-  // Atualiza analytics
-  atualizarAnalytics();
+async function salvarContatoEContinuar(dados) {
+  try {
+    // Cria novo cliente
+    const novoCliente = {
+      id: 'client_' + Date.now(),
+      nome: dados.nome,
+      telefone: dados.telefone,
+      email: dados.email || '',
+      origem: dados.origem || '',
+      tags: dados.tags || [],
+      observacoes: dados.observacoes || '',
+      dataCadastro: new Date().toISOString(),
+      ultimaInteracao: new Date().toISOString(),
+      status: 'lead',
+      deals: [],
+      tasks: [],
+      // Adiciona dados de indicação se existirem
+      indicacao: dados.origem === 'indicacao' ? {
+        nome: dados.indicador_nome || '',
+        telefone: dados.indicador_telefone || ''
+      } : null
+    };
+    
+    // Salva no estado
+    window.crmState.kanbanData.clients[novoCliente.id] = novoCliente;
+    
+    // Adiciona à primeira coluna
+    window.crmState.kanbanData.columns[0].clients.push(novoCliente.id);
+    
+    // Salva no storage
+    await CRMStorage.salvar('kanban_data', window.crmState.kanbanData);
+    
+    // Feedback visual
+    CRMUI.mostrarNotificacao('✅ Contato salvo com sucesso!', 'success');
+    
+    // Fecha modal atual
+    CRMUI.fecharModal();
+    
+    // Abre janela de cadastro de negócios
+    setTimeout(() => {
+      mostrarCadastroNegocio(novoCliente.id);
+    }, 300);
+    
+    // Atualiza analytics
+    atualizarAnalytics();
+    
+  } catch (erro) {
+    console.error('Erro ao salvar contato:', erro);
+    CRMUI.mostrarNotificacao('❌ Erro ao salvar contato', 'error');
+  }
 }
 
 // =====================================================
-// MOSTRAR DASHBOARD
+// MOSTRAR CADASTRO DE NEGÓCIO - NOVO
+// =====================================================
+function mostrarCadastroNegocio(clientId) {
+  const cliente = window.crmState.kanbanData.clients[clientId];
+  
+  const conteudo = `
+    <div class="negocio-form">
+      <div class="form-info">
+        <p>Cadastre um negócio para <strong>${cliente.nome}</strong></p>
+      </div>
+      
+      <form id="form-cadastro-negocio">
+        <div class="form-field">
+          <label>Título do Negócio</label>
+          <input type="text" name="titulo" placeholder="Ex: Consultoria de Marketing" required>
+        </div>
+        
+        <div class="form-field">
+          <label>Valor Adesão</label>
+          <input type="number" name="valor_adesao" placeholder="0,00" step="0.01" required>
+        </div>
+        
+        <div class="form-field">
+          <label>Valor Gordurinha</label>
+          <input type="number" name="valor_gordurinha" placeholder="0,00" step="0.01" required>
+        </div>
+        
+        <div class="form-field">
+          <label>Status</label>
+          <select name="status">
+            <option value="em_negociacao">Em Negociação</option>
+            <option value="proposta_enviada">Proposta Enviada</option>
+            <option value="fechado">Fechado</option>
+            <option value="perdido">Perdido</option>
+          </select>
+        </div>
+        
+        <div class="form-field">
+          <label>Descrição</label>
+          <textarea name="descricao" rows="3" placeholder="Detalhes do negócio..."></textarea>
+        </div>
+      </form>
+    </div>
+  `;
+  
+  const modal = CRMUI.criarModal({
+    titulo: 'Cadastrar Negócio',
+    conteudo: conteudo,
+    tamanho: 'medium',
+    acoes: [
+      {
+        id: 'pular',
+        texto: 'Pular esta etapa',
+        tipo: 'secondary',
+        onClick: () => modal.fechar()
+      },
+      {
+        id: 'salvar',
+        texto: '💰 Salvar Negócio',
+        tipo: 'primary',
+        onClick: async () => {
+          const form = document.getElementById('form-cadastro-negocio');
+          const formData = new FormData(form);
+          
+          const negocio = {
+            id: 'deal_' + Date.now(),
+            titulo: formData.get('titulo'),
+            valor_adesao: parseFloat(formData.get('valor_adesao')) || 0,
+            valor_gordurinha: parseFloat(formData.get('valor_gordurinha')) || 0,
+            valor: parseFloat(formData.get('valor_adesao')) + parseFloat(formData.get('valor_gordurinha')),
+            status: formData.get('status'),
+            descricao: formData.get('descricao'),
+            dataCriacao: new Date().toISOString()
+          };
+          
+          // Adiciona negócio ao cliente
+          if (!cliente.deals) cliente.deals = [];
+          cliente.deals.push(negocio);
+          
+          // Salva
+          await CRMStorage.salvar('kanban_data', window.crmState.kanbanData);
+          
+          CRMUI.mostrarNotificacao('💰 Negócio cadastrado com sucesso!', 'success');
+          modal.fechar();
+          
+          // Atualiza analytics
+          atualizarAnalytics();
+        }
+      }
+    ]
+  });
+}
+
+// =====================================================
+// MOSTRAR DASHBOARD - ATUALIZADO COM ADESÃO E GORDURINHA
 // =====================================================
 function mostrarDashboard() {
-  const panel = document.querySelector('#crm-main-panel');
-  const content = document.querySelector('#panel-content');
-  const overlay = document.querySelector('#crm-overlay');
-  
   // Calcula estatísticas
   const stats = calcularEstatisticas();
   
-  content.innerHTML = `
+  const conteudo = `
     <div class="dashboard">
       <div class="dashboard-header">
         <h2>Dashboard Inteligente</h2>
@@ -427,20 +610,20 @@ function mostrarDashboard() {
         </div>
         
         <div class="stat-card gradient-green">
-          <div class="stat-icon">💰</div>
+          <div class="stat-icon">💎</div>
           <div class="stat-content">
-            <h3>R$ ${stats.totalRevenue.toLocaleString('pt-BR')}</h3>
-            <p>Receita Total</p>
+            <h3>R$ ${stats.totalAdesao.toLocaleString('pt-BR')}</h3>
+            <p>Adesão</p>
             <span class="trend up">+25%</span>
           </div>
         </div>
         
         <div class="stat-card gradient-orange">
-          <div class="stat-icon">📈</div>
+          <div class="stat-icon">🎯</div>
           <div class="stat-content">
-            <h3>${stats.conversionRate}%</h3>
-            <p>Taxa de Conversão</p>
-            <span class="trend up">+5%</span>
+            <h3>R$ ${stats.totalGordurinha.toLocaleString('pt-BR')}</h3>
+            <p>Gordurinha</p>
+            <span class="trend up">+15%</span>
           </div>
         </div>
       </div>
@@ -448,12 +631,12 @@ function mostrarDashboard() {
       <div class="charts-container">
         <div class="chart-card">
           <h3>Evolução de Vendas</h3>
-          <canvas id="sales-chart"></canvas>
+          <canvas id="chart-vendas" style="height: 200px;"></canvas>
         </div>
         
         <div class="chart-card">
           <h3>Origem dos Leads</h3>
-          <canvas id="sources-chart"></canvas>
+          <canvas id="chart-origem" style="height: 200px;"></canvas>
         </div>
       </div>
       
@@ -466,43 +649,176 @@ function mostrarDashboard() {
     </div>
   `;
   
-  // Mostra painel
-  panel.classList.remove('hidden');
-  overlay.classList.remove('hidden');
+  // Cria modal usando CRMUI
+  const modal = CRMUI.criarModal({
+    titulo: 'Dashboard',
+    conteudo: conteudo,
+    tamanho: 'large',
+    acoes: [
+      {
+        id: 'fechar',
+        texto: 'Fechar',
+        tipo: 'secondary',
+        onClick: () => modal.fechar()
+      }
+    ]
+  });
   
-  // Renderiza gráficos (simulado)
-  setTimeout(renderizarGraficos, 100);
+  // Inicializa gráficos após o modal ser criado
+  setTimeout(() => {
+    inicializarGraficos();
+  }, 300);
 }
 
 // =====================================================
-// FUNÇÕES AUXILIARES
+// INICIALIZAR GRÁFICOS - NOVO
 // =====================================================
+function inicializarGraficos() {
+  // Verifica se Chart.js está disponível
+  if (typeof Chart === 'undefined') {
+    console.log('Chart.js não está disponível, usando gráficos simulados');
+    
+    // Gráfico de vendas simulado
+    const canvasVendas = document.getElementById('chart-vendas');
+    if (canvasVendas) {
+      canvasVendas.style.background = '#f8f9fa';
+      canvasVendas.style.borderRadius = '8px';
+      canvasVendas.style.display = 'flex';
+      canvasVendas.style.alignItems = 'center';
+      canvasVendas.style.justifyContent = 'center';
+      canvasVendas.innerHTML = '<div style="text-align: center; color: #6b7280;">📊 Gráfico de vendas</div>';
+    }
+    
+    // Gráfico de origem simulado
+    const canvasOrigem = document.getElementById('chart-origem');
+    if (canvasOrigem) {
+      canvasOrigem.style.background = '#f8f9fa';
+      canvasOrigem.style.borderRadius = '8px';
+      canvasOrigem.style.display = 'flex';
+      canvasOrigem.style.alignItems = 'center';
+      canvasOrigem.style.justifyContent = 'center';
+      canvasOrigem.innerHTML = '<div style="text-align: center; color: #6b7280;">📈 Gráfico de origem</div>';
+    }
+    
+    return;
+  }
+  
+  // Se Chart.js estiver disponível, criar gráficos reais
+  // ... código para gráficos reais ...
+}
+
+// =====================================================
+// MOSTRAR KANBAN - MODIFICADO PARA TELA CHEIA
+// =====================================================
+function mostrarKanban() {
+  if (!window.CRMKanban) {
+    CRMUI.mostrarNotificacao('❌ Módulo Kanban não encontrado', 'error');
+    return;
+  }
+  
+  // Remove o modal e usa a tela inteira
+  const existingModal = document.querySelector('.crm-modal-container');
+  if (existingModal) {
+    existingModal.remove();
+  }
+  
+  // Cria container fullscreen
+  const fullscreenContainer = document.createElement('div');
+  fullscreenContainer.id = 'kanban-fullscreen';
+  fullscreenContainer.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: white;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+  `;
+  
+  fullscreenContainer.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid #e5e7eb;">
+      <h2 style="margin: 0; font-size: 24px; font-weight: 600;">Pipeline de Vendas</h2>
+      <button id="close-kanban" style="
+        background: #6b7280;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+      ">✕ Fechar</button>
+    </div>
+    <div id="kanban-container" style="flex: 1; overflow: auto; padding: 20px;"></div>
+  `;
+  
+  document.body.appendChild(fullscreenContainer);
+  
+  // Inicializa o kanban
+  const container = document.getElementById('kanban-container');
+  if (container) {
+    CRMKanban.criarKanban(container);
+  }
+  
+  // Botão fechar
+  document.getElementById('close-kanban').addEventListener('click', () => {
+    fullscreenContainer.remove();
+  });
+}
+
+// =====================================================
+// CALCULAR ESTATÍSTICAS - ATUALIZADO
+// =====================================================
+function calcularEstatisticas() {
+  const data = window.crmState.kanbanData;
+  const totalClients = Object.keys(data?.clients || {}).length;
+  const totalDeals = Object.values(data?.clients || {})
+    .reduce((sum, client) => sum + (client.deals?.length || 0), 0);
+  
+  let totalAdesao = 0;
+  let totalGordurinha = 0;
+  let totalRevenue = 0;
+  
+  Object.values(data?.clients || {}).forEach(client => {
+    (client.deals || []).forEach(deal => {
+      totalAdesao += deal.valor_adesao || 0;
+      totalGordurinha += deal.valor_gordurinha || 0;
+      totalRevenue += deal.valor || 0;
+    });
+  });
+  
+  return {
+    totalClients,
+    totalDeals,
+    totalRevenue,
+    totalAdesao,
+    totalGordurinha,
+    conversionRate: totalClients > 0 ? Math.round((totalDeals / totalClients) * 100) : 0
+  };
+}
+
+// =====================================================
+// OUTRAS FUNÇÕES - MANTIDAS
+// =====================================================
+function mostrarAnalytics() {
+  CRMUI.mostrarNotificacao('📊 Analytics detalhado em desenvolvimento...', 'info');
+}
+
+function mostrarAssistenteIA() {
+  CRMUI.mostrarNotificacao('🤖 IA Assistant em desenvolvimento...', 'info');
+}
+
+function mostrarConfiguracoes() {
+  CRMUI.mostrarNotificacao('⚙️ Configurações em desenvolvimento...', 'info');
+}
+
 function fecharPainel() {
   const panel = document.querySelector('#crm-main-panel');
   const overlay = document.querySelector('#crm-overlay');
   
-  panel.classList.add('hidden');
-  overlay.classList.add('hidden');
-}
-
-function mostrarNotificacao(mensagem, tipo = 'info') {
-  // Cria elemento de notificação
-  const notif = document.createElement('div');
-  notif.className = `crm-notification ${tipo}`;
-  notif.innerHTML = `
-    <span>${mensagem}</span>
-  `;
-  
-  document.body.appendChild(notif);
-  
-  // Anima entrada
-  setTimeout(() => notif.classList.add('show'), 10);
-  
-  // Remove após 3 segundos
-  setTimeout(() => {
-    notif.classList.remove('show');
-    setTimeout(() => notif.remove(), 300);
-  }, 3000);
+  panel?.classList.add('hidden');
+  overlay?.classList.add('hidden');
 }
 
 function ajustarLayoutWhatsApp() {
@@ -512,24 +828,6 @@ function ajustarLayoutWhatsApp() {
     app.style.marginRight = '70px';
     app.style.transition = 'margin-right 0.3s ease';
   }
-}
-
-function calcularEstatisticas() {
-  const data = window.crmState.kanbanData;
-  const totalClients = Object.keys(data.clients || {}).length;
-  const totalDeals = Object.values(data.clients || {})
-    .reduce((sum, client) => sum + (client.deals?.length || 0), 0);
-  const totalRevenue = Object.values(data.clients || {})
-    .reduce((sum, client) => {
-      return sum + (client.deals || []).reduce((dealSum, deal) => dealSum + (deal.valor || 0), 0);
-    }, 0);
-  
-  return {
-    totalClients,
-    totalDeals,
-    totalRevenue,
-    conversionRate: totalClients > 0 ? Math.round((totalDeals / totalClients) * 100) : 0
-  };
 }
 
 function gerarAtividadesRecentes() {
@@ -552,16 +850,16 @@ function gerarAtividadesRecentes() {
   `).join('');
 }
 
-function renderizarGraficos() {
-  // Aqui você poderia integrar Chart.js ou outra biblioteca
-  // Por enquanto, apenas um placeholder visual
-  console.log('📊 Renderizando gráficos...');
-}
-
 // =====================================================
 // CONFIGURAR CAPTURA AUTOMÁTICA
 // =====================================================
 function configurarCapturaAutomatica() {
+  // Verifica se o módulo existe
+  if (!window.CRMCapture) {
+    console.warn('⚠️ Módulo CRMCapture não encontrado');
+    return;
+  }
+  
   // Observa mudanças no chat para detectar novo contato
   const observer = new MutationObserver(() => {
     const novoContato = CRMCapture.detectarMudancaContato();
@@ -611,27 +909,37 @@ function configurarAtalhos() {
       e.preventDefault();
       executarAcao('kanban');
     }
+    
+    // Ctrl+Shift+D = Dashboard
+    if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+      e.preventDefault();
+      executarAcao('dashboard');
+    }
   });
 }
 
 // =====================================================
-// FUNÇÕES PLACEHOLDER (serão implementadas nos módulos)
+// TRATAMENTO DE MENSAGENS
 // =====================================================
-function mostrarKanban() {
-  mostrarNotificacao('🚧 Kanban em desenvolvimento...', 'info');
-}
-
-function mostrarAnalytics() {
-  mostrarNotificacao('🚧 Analytics em desenvolvimento...', 'info');
-}
-
-function mostrarAssistenteIA() {
-  mostrarNotificacao('🤖 IA Assistant em desenvolvimento...', 'info');
-}
-
-function mostrarConfiguracoes() {
-  mostrarNotificacao('⚙️ Configurações em desenvolvimento...', 'info');
-}
+window.addEventListener('message', (event) => {
+  if (event.data.type === 'CRM_ACTION') {
+    switch (event.data.action) {
+      case 'editarCliente':
+        // Implementar edição de cliente
+        CRMUI.mostrarNotificacao('Edição de cliente em desenvolvimento', 'info');
+        break;
+        
+      case 'novoNegocio':
+        mostrarCadastroNegocio(event.data.clientId);
+        break;
+        
+      case 'novaTarefa':
+        // Implementar nova tarefa
+        CRMUI.mostrarNotificacao('Cadastro de tarefa em desenvolvimento', 'info');
+        break;
+    }
+  }
+});
 
 // =====================================================
 // INICIALIZAÇÃO
