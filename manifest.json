@@ -34,14 +34,10 @@
       "js": [
         "src/modules/utils.js",
         "src/modules/storage.js",
-        "src/modules/dashboard.js",
-        "src/modules/capture-contact.js",
-        "src/modules/business.js",
         "src/modules/capture.js",
         "src/modules/ui.js",
         "src/modules/kanban.js",
         "src/modules/analytics.js",
-        "src/modules/modal.js",
         "src/content.js"
       ],
       "css": [
@@ -50,10 +46,7 @@
         "styles/kanban.css",
         "styles/cards.css",
         "styles/animations.css",
-        "styles/glassmorphism.css",
-        "styles/modal.css",
-        "styles/dashboard.css",
-        "styles/business.css"
+        "styles/glassmorphism.css"
       ],
       "run_at": "document_end"
     }
