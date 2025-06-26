@@ -993,4 +993,397 @@ window.CRMUI = (() => {
     const d = new Date(data);
     const dia = String(d.getDate()).padStart(2, '0');
     const mes = String(d.getMonth() + 1).padStart(2, '0');
-    const ano = d.
+    const ano = d.getFullYear();
+    const hora = String(d.getHours()).padStart(2, '0');
+    const minuto = String(d.getMinutes()).padStart(2, '0');
+    
+    return formato
+      .replace('DD', dia)
+      .replace('MM', mes)
+      .replace('YYYY', ano)
+      .replace('HH', hora)
+      .replace('mm', minuto);
+  }
+  
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+  
+  // =====================================================
+  // INICIALIZAÇÃO
+  // =====================================================
+  
+  function inicializar() {
+    console.log('🎨 Módulo UI inicializado');
+    carregarTema();
+    
+    // Adiciona listeners globais
+    document.addEventListener('click', (e) => {
+      // Fecha menus abertos
+      document.querySelectorAll('.crm-menu.show').forEach(menu => {
+        fecharMenu(menu);
+      });
+      
+      // Efeito ripple em botões
+      if (e.target.classList.contains('crm-btn')) {
+        efeitoRipple(e.target, e);
+      }
+    });
+    
+    // Adiciona estilos CSS necessários se não existirem
+    adicionarEstilosCSS();
+  }
+  
+  // Adiciona estilos CSS essenciais para os modais funcionarem
+  function adicionarEstilosCSS() {
+    const existingStyle = document.getElementById('crm-ui-styles');
+    if (existingStyle) return;
+    
+    const style = document.createElement('style');
+    style.id = 'crm-ui-styles';
+    style.textContent = `
+      /* Estilos essenciais para modais */
+      .crm-modal-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+      }
+      
+      .crm-modal-container.show {
+        opacity: 1;
+        visibility: visible;
+      }
+      
+      .crm-modal {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        max-width: 90vw;
+        max-height: 90vh;
+        overflow: hidden;
+        transform: scale(0.9);
+        transition: transform 0.3s ease;
+      }
+      
+      .crm-modal-container.show .crm-modal {
+        transform: scale(1);
+      }
+      
+      .modal-small { width: 400px; }
+      .modal-medium { width: 600px; }
+      .modal-large { width: 800px; }
+      .modal-fullscreen { width: 95vw; height: 95vh; }
+      
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      
+      .modal-title {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #111827;
+      }
+      
+      .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #6b7280;
+        padding: 4px;
+        border-radius: 4px;
+        transition: all 0.2s;
+      }
+      
+      .modal-close:hover {
+        background-color: #f3f4f6;
+        color: #111827;
+      }
+      
+      .modal-content {
+        padding: 20px;
+        max-height: 60vh;
+        overflow-y: auto;
+      }
+      
+      .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        padding: 20px;
+        border-top: 1px solid #e5e7eb;
+        background-color: #f9fafb;
+      }
+      
+      /* Estilos para botões */
+      .crm-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        outline: none;
+      }
+      
+      .btn-primary {
+        background-color: #3b82f6;
+        color: white;
+      }
+      
+      .btn-primary:hover {
+        background-color: #2563eb;
+      }
+      
+      .btn-secondary {
+        background-color: #6b7280;
+        color: white;
+      }
+      
+      .btn-secondary:hover {
+        background-color: #4b5563;
+      }
+      
+      .btn-danger {
+        background-color: #ef4444;
+        color: white;
+      }
+      
+      .btn-danger:hover {
+        background-color: #dc2626;
+      }
+      
+      .btn-success {
+        background-color: #10b981;
+        color: white;
+      }
+      
+      .btn-success:hover {
+        background-color: #059669;
+      }
+      
+      .btn-warning {
+        background-color: #f59e0b;
+        color: white;
+      }
+      
+      .btn-warning:hover {
+        background-color: #d97706;
+      }
+      
+      /* Notificações */
+      .notifications-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10001;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      
+      .crm-notification {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: white;
+        border-radius: 8px;
+        padding: 12px 16px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        min-width: 300px;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+      }
+      
+      .crm-notification.slide-in {
+        transform: translateX(0);
+      }
+      
+      .crm-notification.slide-out {
+        transform: translateX(100%);
+      }
+      
+      .crm-notification.success {
+        border-left: 4px solid #10b981;
+      }
+      
+      .crm-notification.error {
+        border-left: 4px solid #ef4444;
+      }
+      
+      .crm-notification.warning {
+        border-left: 4px solid #f59e0b;
+      }
+      
+      .crm-notification.info {
+        border-left: 4px solid #3b82f6;
+      }
+      
+      .notif-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 18px;
+        color: #6b7280;
+        margin-left: auto;
+      }
+      
+      /* Loading */
+      .crm-loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.9);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 10002;
+      }
+      
+      .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #e5e7eb;
+        border-top: 4px solid #3b82f6;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      .loading-text {
+        margin-top: 16px;
+        color: #6b7280;
+        font-size: 14px;
+      }
+      
+      /* Formulários */
+      .form-field {
+        margin-bottom: 16px;
+      }
+      
+      .field-label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 500;
+        color: #374151;
+      }
+      
+      .field-input {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color 0.2s;
+      }
+      
+      .field-input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+      
+      .required {
+        color: #ef4444;
+      }
+      
+      .field-hint {
+        display: block;
+        margin-top: 4px;
+        font-size: 12px;
+        color: #6b7280;
+      }
+    `;
+    
+    document.head.appendChild(style);
+  }
+  
+  // =====================================================
+  // API PÚBLICA
+  // =====================================================
+  
+  return {
+    // Elementos
+    criarBotao,
+    criarCard,
+    criarModal,
+    criarCampo,
+    criarFormulario,
+    criarMenu,
+    criarTabs,
+    criarProgressBar,
+    criarBadge,
+    criarAvatar,
+    criarEmptyState,
+    
+    // Notificações
+    mostrarNotificacao,
+    mostrarLoading,
+    confirmar,
+    
+    // Tooltips
+    adicionarTooltip,
+    
+    // Animações
+    animarElemento,
+    efeitoRipple,
+    
+    // Tema
+    alternarTema,
+    aplicarTema,
+    
+    // Utilitários
+    copiarTexto,
+    formatarData,
+    debounce,
+    
+    // Modal
+    fecharModal,
+    
+    // Estado
+    get estado() {
+      return { ...state };
+    },
+    
+    // Inicialização
+    inicializar
+  };
+})();
+
+// Auto-inicializa quando carregado
+CRMUI.inicializar();
