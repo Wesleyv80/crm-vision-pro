@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CRM Vision Pro - WhatsApp Business Intelligence",
-  "version": "2.1.0",
+  "version": "2.0.1",
   "description": "Sistema CRM revolucionário com IA integrada para WhatsApp Web",
   "author": "Wesley Silva",
   
@@ -34,14 +34,10 @@
       "js": [
         "src/modules/utils.js",
         "src/modules/storage.js",
-        "src/modules/dashboard.js",
-        "src/modules/capture-contact.js",
-        "src/modules/business.js",
         "src/modules/capture.js",
         "src/modules/ui.js",
         "src/modules/kanban.js",
         "src/modules/analytics.js",
-        "src/modules/modal.js",
         "src/content.js"
       ],
       "css": [
@@ -50,10 +46,7 @@
         "styles/kanban.css",
         "styles/cards.css",
         "styles/animations.css",
-        "styles/glassmorphism.css",
-        "styles/modal.css",
-        "styles/dashboard.css",
-        "styles/business.css"
+        "styles/glassmorphism.css"
       ],
       "run_at": "document_end"
     }
@@ -64,8 +57,7 @@
       "resources": [
         "assets/*",
         "styles/*",
-        "src/modules/*",
-        "fonts/*"
+        "src/modules/*"
       ],
       "matches": ["https://web.whatsapp.com/*"]
     }
