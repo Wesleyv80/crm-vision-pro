@@ -686,9 +686,9 @@ window.CRMKanban = (() => {
   
   function renderizarColunas(container) {
     container.innerHTML = '';
-    
-    state.colunas.forEach(coluna => {
-      const colunaEl = criarColuna(coluna);
+
+    state.colunas.forEach((coluna, index) => {
+      const colunaEl = criarColuna(coluna, index);
       container.appendChild(colunaEl);
     });
     
@@ -709,8 +709,19 @@ window.CRMKanban = (() => {
   // =====================================================
   // CRIAR COLUNA - LARGURA REDUZIDA
   // =====================================================
+
+  function criarBotoesColuna(colunaData, index) {
+    const actionButtons = document.createElement('div');
+    actionButtons.className = 'column-actions';
+    actionButtons.innerHTML = `
+      <button class="column-btn edit-column" title="Editar" style="background: none; border: none; cursor: pointer; padding: 4px;">✏️</button>
+      <button class="column-btn color-column" title="Cor" style="background: none; border: none; cursor: pointer; padding: 4px;">🎨</button>
+      <button class="column-btn delete-column" title="Excluir" style="background: none; border: none; cursor: pointer; padding: 4px;">🗑️</button>
+    `;
+    return actionButtons;
+  }
   
-  function criarColuna(colunaData) {
+  function criarColuna(colunaData, index) {
     const coluna = document.createElement('div');
     coluna.className = 'kanban-column';
     coluna.dataset.colunaId = colunaData.id;
@@ -724,55 +735,33 @@ window.CRMKanban = (() => {
     `;
     
     // Header da coluna
-    const header = document.createElement('div');
-    header.className = 'column-header';
-    header.style.marginBottom = '16px';
+    const columnHeader = document.createElement('div');
+    columnHeader.className = 'column-header';
 
-    // Container flexível para título + botões no topo
+    // Linha 1: Título + botões
     const headerTop = document.createElement('div');
-    headerTop.style.display = 'flex';
-    headerTop.style.justifyContent = 'space-between';
-    headerTop.style.alignItems = 'center';
-    headerTop.style.gap = '4px';
+    headerTop.className = 'column-header-top';
 
-    // Título da coluna com quantidade
     const columnTitle = document.createElement('h3');
     columnTitle.className = 'column-title';
-    columnTitle.contentEditable = false;
-    columnTitle.style.margin = '0';
-    columnTitle.style.fontSize = '14px';
-    columnTitle.style.fontWeight = '600';
-    columnTitle.textContent = `${colunaData.title} (${colunaData.clients.length})`;
+    columnTitle.innerHTML = `${colunaData.title} (${colunaData.clients.length})`;
+
+    const actionButtons = criarBotoesColuna(colunaData, index);
+
     headerTop.appendChild(columnTitle);
-
-    // Botões de ação
-    const actionButtons = document.createElement('div');
-    actionButtons.className = 'column-actions';
-    actionButtons.style.display = 'flex';
-    actionButtons.style.gap = '4px';
-    actionButtons.innerHTML = `
-      <button class="column-btn edit-column" title="Editar" style="background: none; border: none; cursor: pointer; padding: 4px;">✏️</button>
-      <button class="column-btn color-column" title="Cor" style="background: none; border: none; cursor: pointer; padding: 4px;">🎨</button>
-      <button class="column-btn delete-column" title="Excluir" style="background: none; border: none; cursor: pointer; padding: 4px;">🗑️</button>
-    `;
     headerTop.appendChild(actionButtons);
+    columnHeader.appendChild(headerTop);
 
-    header.appendChild(headerTop);
-
-    // Linha de adesão + gordurinha
+    // Linha 2: Adesão e Gordurinha lado a lado
     const { totalAdesao, totalGordurinha } = calcularTotaisColuna(colunaData);
     const valoresTopo = document.createElement('div');
-    valoresTopo.className = 'valores-kanban-topo';
-    valoresTopo.style.display = 'flex';
-    valoresTopo.style.justifyContent = 'space-between';
-    valoresTopo.style.fontSize = '11px';
-    valoresTopo.style.marginTop = '4px';
-    valoresTopo.style.padding = '0 4px';
+    valoresTopo.className = 'column-values-topo';
     valoresTopo.innerHTML = `
       <span>Adesão: <strong>R$ ${totalAdesao.toFixed(2)}</strong></span>
       <span>Gordurinha: <strong>R$ ${totalGordurinha.toFixed(2)}</strong></span>
     `;
-    header.appendChild(valoresTopo);
+
+    columnHeader.appendChild(valoresTopo);
     
     // Área dos cards
     const cardsContainer = document.createElement('div');
@@ -790,10 +779,10 @@ window.CRMKanban = (() => {
     });
 
     // Adiciona eventos de coluna
-    const titulo = header.querySelector('.column-title');
-    const editBtn = header.querySelector('.edit-column');
-    const colorBtn = header.querySelector('.color-column');
-    const deleteBtn = header.querySelector('.delete-column');
+    const titulo = columnHeader.querySelector('.column-title');
+    const editBtn = columnHeader.querySelector('.edit-column');
+    const colorBtn = columnHeader.querySelector('.color-column');
+    const deleteBtn = columnHeader.querySelector('.delete-column');
 
     // Editar título
     editBtn.addEventListener('click', () => {
@@ -852,7 +841,7 @@ window.CRMKanban = (() => {
       }
     });
 
-    coluna.appendChild(header);
+    coluna.appendChild(columnHeader);
     coluna.appendChild(cardsContainer);
 
     // Drag & Drop
@@ -1148,7 +1137,7 @@ window.CRMKanban = (() => {
         
         // Atualiza totais
         const { totalAdesao, totalGordurinha } = calcularTotaisColuna(coluna);
-        const valoresEl = colunaEl.querySelector('.valores-topo');
+        const valoresEl = colunaEl.querySelector('.column-values-topo');
         if (valoresEl) {
           valoresEl.innerHTML = `
             <div>Adesão: <strong>R$ ${totalAdesao.toFixed(2)}</strong></div>
