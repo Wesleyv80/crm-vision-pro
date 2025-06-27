@@ -219,11 +219,28 @@
 
 /* Header da coluna */
 .column-header {
-  padding: 1.25rem;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 0.75rem 1rem;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 4px;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 1rem;
+}
+
+.column-header-top {
+  display: flex;
   justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.column-values-topo {
+  font-size: 0.75rem;
+  color: #475569;
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 2px;
 }
 
 .column-info {
@@ -231,10 +248,10 @@
 }
 
 .column-title {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #1e293b;
-  margin: 0 0 0.25rem 0;
+  margin: 0;
   outline: none;
   border-radius: 4px;
   padding: 2px 4px;

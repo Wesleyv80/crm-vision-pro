@@ -726,30 +726,21 @@ window.CRMKanban = (() => {
     // Header da coluna
     const header = document.createElement('div');
     header.className = 'column-header';
-    header.style.marginBottom = '16px';
 
     // Container flexível para título + botões no topo
     const headerTop = document.createElement('div');
-    headerTop.style.display = 'flex';
-    headerTop.style.justifyContent = 'space-between';
-    headerTop.style.alignItems = 'center';
-    headerTop.style.gap = '4px';
+    headerTop.className = 'column-header-top';
 
     // Título da coluna com quantidade
     const columnTitle = document.createElement('h3');
     columnTitle.className = 'column-title';
     columnTitle.contentEditable = false;
-    columnTitle.style.margin = '0';
-    columnTitle.style.fontSize = '14px';
-    columnTitle.style.fontWeight = '600';
     columnTitle.textContent = `${colunaData.title} (${colunaData.clients.length})`;
     headerTop.appendChild(columnTitle);
 
     // Botões de ação
     const actionButtons = document.createElement('div');
     actionButtons.className = 'column-actions';
-    actionButtons.style.display = 'flex';
-    actionButtons.style.gap = '4px';
     actionButtons.innerHTML = `
       <button class="column-btn edit-column" title="Editar" style="background: none; border: none; cursor: pointer; padding: 4px;">✏️</button>
       <button class="column-btn color-column" title="Cor" style="background: none; border: none; cursor: pointer; padding: 4px;">🎨</button>
@@ -762,12 +753,7 @@ window.CRMKanban = (() => {
     // Linha de adesão + gordurinha
     const { totalAdesao, totalGordurinha } = calcularTotaisColuna(colunaData);
     const valoresTopo = document.createElement('div');
-    valoresTopo.className = 'valores-kanban-topo';
-    valoresTopo.style.display = 'flex';
-    valoresTopo.style.justifyContent = 'space-between';
-    valoresTopo.style.fontSize = '11px';
-    valoresTopo.style.marginTop = '4px';
-    valoresTopo.style.padding = '0 4px';
+    valoresTopo.className = 'column-values-topo';
     valoresTopo.innerHTML = `
       <span>Adesão: <strong>R$ ${totalAdesao.toFixed(2)}</strong></span>
       <span>Gordurinha: <strong>R$ ${totalGordurinha.toFixed(2)}</strong></span>
@@ -1148,7 +1134,7 @@ window.CRMKanban = (() => {
         
         // Atualiza totais
         const { totalAdesao, totalGordurinha } = calcularTotaisColuna(coluna);
-        const valoresEl = colunaEl.querySelector('.valores-topo');
+        const valoresEl = colunaEl.querySelector('.column-values-topo');
         if (valoresEl) {
           valoresEl.innerHTML = `
             <div>Adesão: <strong>R$ ${totalAdesao.toFixed(2)}</strong></div>
