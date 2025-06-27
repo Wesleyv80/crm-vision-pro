@@ -732,13 +732,25 @@ window.CRMKanban = (() => {
         <h3 class="column-title" contenteditable="false" style="margin: 0; font-size: 16px; font-weight: 600;">${colunaData.title}</h3>
         <span class="column-count" style="font-size: 12px; color: #6b7280;">${colunaData.clients.length} cards</span>
       </div>
-      
+
       <div class="column-actions" style="display: flex; gap: 4px;">
         <button class="column-btn edit-column" title="Editar" style="background: none; border: none; cursor: pointer; padding: 4px;">✏️</button>
         <button class="column-btn color-column" title="Cor" style="background: none; border: none; cursor: pointer; padding: 4px;">🎨</button>
         <button class="column-btn delete-column" title="Excluir" style="background: none; border: none; cursor: pointer; padding: 4px;">🗑️</button>
       </div>
     `;
+
+    // Adesão e Gordurinha no topo da coluna
+    const { totalAdesao, totalGordurinha } = calcularTotaisColuna(colunaData);
+    const valoresContainer = document.createElement("div");
+    valoresContainer.className = "valores-topo";
+    valoresContainer.style.fontSize = "12px";
+    valoresContainer.style.marginTop = "4px";
+    valoresContainer.innerHTML = `
+      <div>Adesão: <strong>R$ ${totalAdesao.toFixed(2)}</strong></div>
+      <div>Gordurinha: <strong>R$ ${totalGordurinha.toFixed(2)}</strong></div>
+    `;
+    header.appendChild(valoresContainer);
     
     // Área dos cards
     const cardsContainer = document.createElement('div');
@@ -824,23 +836,6 @@ window.CRMKanban = (() => {
     // Drag & Drop
     configurarDragDrop(cardsContainer);
 
-    // Estatísticas da coluna - ATUALIZADO
-    const stat = document.createElement('div');
-    stat.className = 'column-stat';
-    stat.style.cssText = 'margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb; font-size: 12px;';
-    
-    const { totalAdesao, totalGordurinha } = calcularTotaisColuna(colunaData);
-    stat.innerHTML = `
-      <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-        <span style="color: #6b7280;">Adesão:</span>
-        <span style="font-weight: 600;">R$ ${totalAdesao.toLocaleString('pt-BR')}</span>
-      </div>
-      <div style="display: flex; justify-content: space-between;">
-        <span style="color: #6b7280;">Gordurinha:</span>
-        <span style="font-weight: 600;">R$ ${totalGordurinha.toLocaleString('pt-BR')}</span>
-      </div>
-    `;
-    coluna.appendChild(stat);
 
     return coluna;
   }
@@ -1131,17 +1126,11 @@ window.CRMKanban = (() => {
         
         // Atualiza totais
         const { totalAdesao, totalGordurinha } = calcularTotaisColuna(coluna);
-        const statEl = colunaEl.querySelector('.column-stat');
-        if (statEl) {
-          statEl.innerHTML = `
-            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-              <span style="color: #6b7280;">Adesão:</span>
-              <span style="font-weight: 600;">R$ ${totalAdesao.toLocaleString('pt-BR')}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span style="color: #6b7280;">Gordurinha:</span>
-              <span style="font-weight: 600;">R$ ${totalGordurinha.toLocaleString('pt-BR')}</span>
-            </div>
+        const valoresEl = colunaEl.querySelector('.valores-topo');
+        if (valoresEl) {
+          valoresEl.innerHTML = `
+            <div>Adesão: <strong>R$ ${totalAdesao.toFixed(2)}</strong></div>
+            <div>Gordurinha: <strong>R$ ${totalGordurinha.toFixed(2)}</strong></div>
           `;
         }
       }
