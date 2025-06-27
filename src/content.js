@@ -1010,12 +1010,29 @@ function fecharPainel() {
 }
 
 function ajustarLayoutWhatsApp() {
-  // Ajusta o layout do WhatsApp para acomodar a sidebar
   const app = document.querySelector('#app');
-  if (app) {
+  const sidebar = document.querySelector('.mini-sidebar');
+
+  if (!app || !sidebar) return;
+
+  // Define estilo inicial
+  app.style.transition = 'all 0.3s ease';
+  app.style.marginRight = '70px';
+  app.style.width = 'calc(100% - 70px)';
+
+  // Expande ao passar o mouse na barra
+  sidebar.addEventListener('mouseenter', () => {
+    sidebar.style.width = '220px';
+    app.style.marginRight = '220px';
+    app.style.width = 'calc(100% - 220px)';
+  });
+
+  // Recolhe ao tirar o mouse
+  sidebar.addEventListener('mouseleave', () => {
+    sidebar.style.width = '70px';
     app.style.marginRight = '70px';
-    app.style.transition = 'margin-right 0.3s ease';
-  }
+    app.style.width = 'calc(100% - 70px)';
+  });
 }
 
 function gerarAtividadesRecentes() {
