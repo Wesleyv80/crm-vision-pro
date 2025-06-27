@@ -726,31 +726,53 @@ window.CRMKanban = (() => {
     // Header da coluna
     const header = document.createElement('div');
     header.className = 'column-header';
-    header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;';
-    header.innerHTML = `
-      <div class="column-info">
-        <h3 class="column-title" contenteditable="false" style="margin: 0; font-size: 16px; font-weight: 600;">${colunaData.title}</h3>
-        <span class="column-count" style="font-size: 12px; color: #6b7280;">${colunaData.clients.length} cards</span>
-      </div>
+    header.style.marginBottom = '16px';
 
-      <div class="column-actions" style="display: flex; gap: 4px;">
-        <button class="column-btn edit-column" title="Editar" style="background: none; border: none; cursor: pointer; padding: 4px;">✏️</button>
-        <button class="column-btn color-column" title="Cor" style="background: none; border: none; cursor: pointer; padding: 4px;">🎨</button>
-        <button class="column-btn delete-column" title="Excluir" style="background: none; border: none; cursor: pointer; padding: 4px;">🗑️</button>
-      </div>
+    // Container flexível para título + botões no topo
+    const headerTop = document.createElement('div');
+    headerTop.style.display = 'flex';
+    headerTop.style.justifyContent = 'space-between';
+    headerTop.style.alignItems = 'center';
+    headerTop.style.gap = '4px';
+
+    // Título da coluna com quantidade
+    const columnTitle = document.createElement('h3');
+    columnTitle.className = 'column-title';
+    columnTitle.contentEditable = false;
+    columnTitle.style.margin = '0';
+    columnTitle.style.fontSize = '14px';
+    columnTitle.style.fontWeight = '600';
+    columnTitle.textContent = `${colunaData.title} (${colunaData.clients.length})`;
+    headerTop.appendChild(columnTitle);
+
+    // Botões de ação
+    const actionButtons = document.createElement('div');
+    actionButtons.className = 'column-actions';
+    actionButtons.style.display = 'flex';
+    actionButtons.style.gap = '4px';
+    actionButtons.innerHTML = `
+      <button class="column-btn edit-column" title="Editar" style="background: none; border: none; cursor: pointer; padding: 4px;">✏️</button>
+      <button class="column-btn color-column" title="Cor" style="background: none; border: none; cursor: pointer; padding: 4px;">🎨</button>
+      <button class="column-btn delete-column" title="Excluir" style="background: none; border: none; cursor: pointer; padding: 4px;">🗑️</button>
     `;
+    headerTop.appendChild(actionButtons);
 
-    // Adesão e Gordurinha no topo da coluna
+    header.appendChild(headerTop);
+
+    // Linha de adesão + gordurinha
     const { totalAdesao, totalGordurinha } = calcularTotaisColuna(colunaData);
-    const valoresContainer = document.createElement("div");
-    valoresContainer.className = "valores-topo";
-    valoresContainer.style.fontSize = "12px";
-    valoresContainer.style.marginTop = "4px";
-    valoresContainer.innerHTML = `
-      <div>Adesão: <strong>R$ ${totalAdesao.toFixed(2)}</strong></div>
-      <div>Gordurinha: <strong>R$ ${totalGordurinha.toFixed(2)}</strong></div>
+    const valoresTopo = document.createElement('div');
+    valoresTopo.className = 'valores-kanban-topo';
+    valoresTopo.style.display = 'flex';
+    valoresTopo.style.justifyContent = 'space-between';
+    valoresTopo.style.fontSize = '11px';
+    valoresTopo.style.marginTop = '4px';
+    valoresTopo.style.padding = '0 4px';
+    valoresTopo.innerHTML = `
+      <span>Adesão: <strong>R$ ${totalAdesao.toFixed(2)}</strong></span>
+      <span>Gordurinha: <strong>R$ ${totalGordurinha.toFixed(2)}</strong></span>
     `;
-    header.appendChild(valoresContainer);
+    header.appendChild(valoresTopo);
     
     // Área dos cards
     const cardsContainer = document.createElement('div');
