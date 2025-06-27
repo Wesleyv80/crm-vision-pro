@@ -735,33 +735,34 @@ window.CRMKanban = (() => {
     `;
     
     // Header da coluna
-    const columnHeader = document.createElement('div');
-    columnHeader.className = 'column-header';
+    const columnHeader = document.createElement("div");
+    columnHeader.className = "column-header";
 
     // Linha 1: Título + botões
-    const headerTop = document.createElement('div');
-    headerTop.className = 'column-header-top';
+    const headerTop = document.createElement("div");
+    headerTop.className = "column-header-top";
 
-    const columnTitle = document.createElement('h3');
-    columnTitle.className = 'column-title';
-    columnTitle.innerHTML = `${colunaData.title} (${colunaData.clients.length})`;
+    const columnTitle = document.createElement("h3");
+    columnTitle.className = "column-title";
+    columnTitle.innerHTML = `${colunaData.icon || ''} ${colunaData.title} (${colunaData.clients.length})`;
 
     const actionButtons = criarBotoesColuna(colunaData, index);
-
     headerTop.appendChild(columnTitle);
     headerTop.appendChild(actionButtons);
     columnHeader.appendChild(headerTop);
 
     // Linha 2: Adesão e Gordurinha lado a lado
     const { totalAdesao, totalGordurinha } = calcularTotaisColuna(colunaData);
-    const valoresTopo = document.createElement('div');
-    valoresTopo.className = 'column-values-topo';
+    const valoresTopo = document.createElement("div");
+    valoresTopo.className = "column-values-topo";
     valoresTopo.innerHTML = `
       <span>Adesão: <strong>R$ ${totalAdesao.toFixed(2)}</strong></span>
       <span>Gordurinha: <strong>R$ ${totalGordurinha.toFixed(2)}</strong></span>
     `;
-
     columnHeader.appendChild(valoresTopo);
+
+    // Finaliza
+    coluna.appendChild(columnHeader);
     
     // Área dos cards
     const cardsContainer = document.createElement('div');
@@ -841,7 +842,6 @@ window.CRMKanban = (() => {
       }
     });
 
-    coluna.appendChild(columnHeader);
     coluna.appendChild(cardsContainer);
 
     // Drag & Drop
