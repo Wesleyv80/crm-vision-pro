@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Vision Pro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 350px;
+            min-height: 500px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Animação de fundo */
+        .bg-animation {
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: rotate 20s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            padding: 2rem;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 2.5rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+
+        /* Stats Cards */
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1rem;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .stat-card:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            opacity: 0.9;
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+        }
+
+        .action-btn {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            color: #fff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+
+        .action-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateX(5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+
+        .action-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+        }
+
+        /* Footer */
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .footer-btn {
+            background: none;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .footer-btn:hover {
+            opacity: 1;
+        }
+
+        /* Toggle Switch */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .toggle {
+            width: 50px;
+            height: 26px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 13px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .toggle.active {
+            background: #10b981;
+        }
+
+        .toggle-handle {
+            width: 22px;
+            height: 22px;
+            background: #fff;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: left 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .toggle.active .toggle-handle {
+            left: 26px;
+        }
+
+        /* Status */
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            padding: 0.75rem;
+            background: rgba(16, 185, 129, 0.2);
+            border-radius: 10px;
+            font-size: 0.9rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: blink 2s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+    
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">🚀</div>
+            <h1>CRM Vision Pro</h1>
+            <p class="subtitle">Sistema Inteligente de Vendas</p>
+        </div>
+
+        <!-- Status -->
+        <div class="status">
+            <div class="status-dot"></div>
+            <span>Extensão ativa no WhatsApp Web</span>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stat-card" id="total-clients">
+                <div class="stat-value">0</div>
+                <div class="stat-label">Clientes</div>
+            </div>
+            <div class="stat-card" id="total-deals">
+                <div class="stat-value">0</div>
+                <div class="stat-label">Negócios</div>
+            </div>
+            <div class="stat-card" id="total-tasks">
+                <div class="stat-value">0</div>
+                <div class="stat-label">Tarefas</div>
+            </div>
+            <div class="stat-card" id="conversion-rate">
+                <div class="stat-value">0%</div>
+                <div class="stat-label">Conversão</div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <button class="action-btn" id="open-whatsapp">
+                <div class="action-icon">💬</div>
+                <div>
+                    <div style="font-weight: 600;">Abrir WhatsApp Web</div>
+                    <div style="font-size: 0.8rem; opacity: 0.8;">Acesse o CRM completo</div>
+                </div>
+            </button>
+
+            <button class="action-btn" id="quick-capture">
+                <div class="action-icon">📸</div>
+                <div>
+                    <div style="font-weight: 600;">Captura Rápida</div>
+                    <div style="font-size: 0.8rem; opacity: 0.8;">Ctrl+Shift+C</div>
+                </div>
+            </button>
+
+            <button class="action-btn" id="export-data">
+                <div class="action-icon">💾</div>
+                <div>
+                    <div style="font-weight: 600;">Exportar Dados</div>
+                    <div style="font-size: 0.8rem; opacity: 0.8;">Backup em JSON</div>
+                </div>
+            </button>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <button class="footer-btn" id="settings">
+                <span>⚙️</span>
+                <span>Configurações</span>
+            </button>
+            
+            <div class="toggle-container">
+                <span style="font-size: 0.85rem;">Auto-captura</span>
+                <div class="toggle active" id="auto-capture-toggle">
+                    <div class="toggle-handle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Carrega estatísticas
+        async function loadStats() {
+            try {
+                const result = await chrome.storage.local.get('crm_kanban_data');
+                const data = result.crm_kanban_data || { clients: {}, columns: [] };
+                
+                const totalClients = Object.keys(data.clients || {}).length;
+                const totalDeals = Object.values(data.clients || {})
+                    .reduce((sum, client) => sum + (client.deals?.length || 0), 0);
+                const totalTasks = data.tasks?.length || 0;
+                const conversionRate = totalClients > 0 
+                    ? Math.round((totalDeals / totalClients) * 100) 
+                    : 0;
+                
+                document.getElementById('total-clients').querySelector('.stat-value').textContent = totalClients;
+                document.getElementById('total-deals').querySelector('.stat-value').textContent = totalDeals;
+                document.getElementById('total-tasks').querySelector('.stat-value').textContent = totalTasks;
+                document.getElementById('conversion-rate').querySelector('.stat-value').textContent = conversionRate + '%';
+            } catch (error) {
+                console.error('Erro ao carregar estatísticas:', error);
+            }
+        }
+
+        // Event Listeners
+        document.getElementById('open-whatsapp').addEventListener('click', () => {
+            chrome.tabs.create({ url: 'https://web.whatsapp.com' });
+        });
+
+        document.getElementById('quick-capture').addEventListener('click', () => {
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                chrome.tabs.sendMessage(tabs[0].id, { action: 'quickCapture' });
+                window.close();
+            });
+        });
+
+        document.getElementById('export-data').addEventListener('click', () => {
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                chrome.tabs.sendMessage(tabs[0].id, { action: 'exportData' });
+            });
+        });
+
+        document.getElementById('settings').addEventListener('click', () => {
+            chrome.tabs.create({ url: 'chrome-extension://' + chrome.runtime.id + '/settings.html' });
+        });
+
+        document.getElementById('auto-capture-toggle').addEventListener('click', function() {
+            this.classList.toggle('active');
+            const isActive = this.classList.contains('active');
+            chrome.storage.local.set({ 'crm_auto_capture': isActive });
+        });
+
+        // Carrega configuração do auto-capture
+        chrome.storage.local.get('crm_auto_capture', (result) => {
+            const isActive = result.crm_auto_capture !== false; // Default true
+            document.getElementById('auto-capture-toggle').classList.toggle('active', isActive);
+        });
+
+        // Carrega stats ao abrir
+        loadStats();
+    </script>
+</body>
+</html>

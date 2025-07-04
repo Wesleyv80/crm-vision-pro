@@ -1,0 +1,76 @@
+{
+  "manifest_version": 3,
+  "name": "CRM Vision Pro - WhatsApp Business Intelligence",
+  "version": "2.0.1",
+  "description": "Sistema CRM revolucionário com IA integrada para WhatsApp Web",
+  "author": "Wesley Silva",
+  
+  "icons": {
+    "16": "assets/icons/icon-16.png",
+    "48": "assets/icons/icon-48.png",
+    "128": "assets/icons/icon-128.png"
+  },
+
+  "permissions": [
+    "storage",
+    "tabs",
+    "clipboardRead",
+    "clipboardWrite",
+    "notifications",
+    "unlimitedStorage"
+  ],
+
+  "host_permissions": [
+    "https://web.whatsapp.com/*"
+  ],
+
+  "background": {
+    "service_worker": "src/background.js"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": [
+        "src/modules/utils.js",
+        "src/modules/storage.js",
+        "src/modules/capture.js",
+        "src/modules/ui.js",
+        "src/modules/kanban.js",
+        "src/modules/analytics.js",
+        "src/modules/dashboard-new.js",
+        "src/content.js"
+      ],
+      "css": [
+        "styles/base.css",
+        "styles/sidebar.css",
+        "styles/kanban.css",
+        "styles/cards.css",
+        "styles/animations.css",
+        "styles/glassmorphism.css",
+        "styles/dashboard.css"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/*",
+        "styles/*",
+        "src/modules/*"
+      ],
+      "matches": ["https://web.whatsapp.com/*"]
+    }
+  ],
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "assets/icons/icon-16.png",
+      "48": "assets/icons/icon-48.png",
+      "128": "assets/icons/icon-128.png"
+    }
+  }
+}
